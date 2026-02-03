@@ -54,8 +54,14 @@ builder.Services.AddScoped<IEnumerable<IDocumentParser>>(sp => new IDocumentPars
     sp.GetRequiredService<ExcelParser>()
 });
 
-// Registrar DocumentParserAgent (orquestrador)
+// Registrar Agents
 builder.Services.AddScoped<DocumentParserAgent>();
+builder.Services.AddScoped<ExtractionAgent>();
+
+// ===================================================
+// Configure HTTP Client Factory
+// ===================================================
+builder.Services.AddHttpClient();
 
 // ===================================================
 // Configure OpenAPI/Swagger
@@ -253,6 +259,121 @@ app.MapGet("/test/supported-formats", (DocumentParserAgent parserAgent) =>
     });
 })
 .WithName("GetSupportedFormats")
+.WithTags("Testing");
+
+// Endpoint para testar extração com IA (parse + extract)
+app.MapPost("/test/extract-full", async (
+    IFormFile file,
+    DocumentParserAgent parserAgent,
+    ExtractionAgent extractionAgent,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Full extraction test: {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+        // Passo 1: Parse do documento
+        using var stream = file.OpenReadStream();
+        var extractedText = await parserAgent.ExtractTextAsync(stream, file.FileName);
+
+        logger.LogInformation("Text extracted, now sending to LLM...");
+
+        // Passo 2: Extração com IA
+        var structuredData = await extractionAgent.ExtractAsync(extractedText);
+
+        return Results.Ok(new
+        {
+            success = true,
+            fileName = file.FileName,
+            fileSize = file.Length,
+            extractedTextChars = extractedText.Length,
+            structuredData = structuredData
+        });
+    }
+    catch (NotSupportedException ex)
+    {
+        logger.LogWarning(ex, "File format not supported: {FileName}", file.FileName);
+        return Results.BadRequest(new
+        {
+            success = false,
+            error = ex.Message
+        });
+    }
+    catch (InvalidOperationException ex)
+    {
+        logger.LogError(ex, "LLM extraction failed: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Unexpected error during full extraction: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("TestFullExtraction")
+.WithTags("Testing")
+.DisableAntiforgery();
+
+// Endpoint para testar apenas a extração (texto → JSON)
+app.MapPost("/test/extract-from-text", async (
+    ExtractionAgent extractionAgent,
+    ILogger<Program> logger,
+    HttpRequest request) =>
+{
+    try
+    {
+        // Ler texto do body
+        using var reader = new StreamReader(request.Body);
+        var documentText = await reader.ReadToEndAsync();
+
+        if (string.IsNullOrWhiteSpace(documentText))
+        {
+            return Results.BadRequest(new
+            {
+                success = false,
+                error = "Request body is empty"
+            });
+        }
+
+        logger.LogInformation("Extracting from text ({CharCount} chars)", documentText.Length);
+
+        var structuredData = await extractionAgent.ExtractAsync(documentText);
+
+        return Results.Ok(new
+        {
+            success = true,
+            inputChars = documentText.Length,
+            structuredData = structuredData
+        });
+    }
+    catch (InvalidOperationException ex)
+    {
+        logger.LogError(ex, "LLM extraction failed");
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Unexpected error during extraction");
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("TestExtractionFromText")
 .WithTags("Testing");
 
 app.Run();
