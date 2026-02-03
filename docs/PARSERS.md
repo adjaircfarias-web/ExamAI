@@ -84,13 +84,69 @@ LDL: 140 mg/dL (Referência: < 100)
 
 ---
 
-### ⏳ **WordParser** (US-006)
+### ✅ **WordParser** (US-006)
 
-**Status:** Não implementado  
-**Biblioteca:** DocumentFormat.OpenXml  
+**Status:** Implementado  
+**Biblioteca:** DocumentFormat.OpenXml (3.4.1)  
 **Suporta:** Arquivos `.docx`
 
-**Próxima sprint**
+#### **Características:**
+
+- ✅ Extrai texto de documentos Word (.docx)
+- ✅ Suporta múltiplos parágrafos
+- ✅ Extrai texto de tabelas
+- ✅ Preserva formatação básica (parágrafos separados)
+- ✅ Tratamento de erros (documento corrompido, vazio)
+- ✅ Logging detalhado
+- ⚠️ **Limitação:** Apenas .docx (não suporta .doc antigo)
+
+#### **Uso:**
+
+```csharp
+public class ExampleController : ControllerBase
+{
+    private readonly IEnumerable<IDocumentParser> _parsers;
+
+    public ExampleController(IEnumerable<IDocumentParser> parsers)
+    {
+        _parsers = parsers;
+    }
+
+    [HttpPost("test-word")]
+    public async Task<IActionResult> TestWord(IFormFile file)
+    {
+        var parser = _parsers.FirstOrDefault(p => p.SupportsFileType(".docx"));
+        
+        if (parser == null)
+            return BadRequest("No parser found for .docx");
+
+        using var stream = file.OpenReadStream();
+        var text = await parser.ExtractTextAsync(stream, ".docx");
+        return Ok(new { extractedText = text });
+    }
+}
+```
+
+#### **Output Exemplo:**
+
+```
+LABORATÓRIO CENTRAL
+Paciente: João Silva
+CPF: 123.456.789-00
+
+Exame: Lipidograma
+Data de Coleta: 28/01/2026
+
+Colesterol Total: 210 mg/dL (Referência: até 200)
+HDL: 45 mg/dL (Referência: > 40)
+LDL: 140 mg/dL (Referência: < 100)
+
+--- TABELA ---
+Parâmetro	Valor	Referência
+Triglicerídeos	125 mg/dL	< 150
+Glicemia	92 mg/dL	70-100
+--- FIM TABELA ---
+```
 
 ---
 
@@ -311,14 +367,23 @@ Para adicionar suporte a novos formatos:
 | PDFs protegidos com senha | Médio | Solicitar PDF sem proteção |
 | Layouts complexos (tabelas) | Baixo | Pós-processamento com IA |
 
+### **WordParser (OpenXml)**
+
+| Limitação | Impacto | Solução |
+|-----------|---------|---------|
+| Não suporta .doc antigo | Médio | Pedir para salvar como .docx |
+| Imagens não são extraídas | Baixo | OCR futuro |
+| Formatação complexa perdida | Baixo | Suficiente para extração de dados |
+| Cabeçalhos/rodapés não extraídos | Baixo | Adicionar extração se necessário |
+
 ---
 
 ## 🚀 Próximos Passos
 
 ### **Implementar (próximas USs):**
 
-1. **US-006:** WordParser (.docx)
-2. **US-007:** ExcelParser (.xlsx)
+1. ~~**US-006:** WordParser (.docx)~~ ✅ COMPLETO
+2. **US-007:** ExcelParser (.xlsx) 🔜
 3. **US-008:** DocumentParserAgent (orquestrador que escolhe o parser correto)
 
 ### **Backlog futuro:**
@@ -340,5 +405,5 @@ Para adicionar suporte a novos formatos:
 ---
 
 **Última atualização:** 03/02/2026  
-**Versão:** 1.0  
-**Parsers implementados:** 1/3 (PDF ✅, Word ⏳, Excel ⏳)
+**Versão:** 1.1  
+**Parsers implementados:** 2/3 (PDF ✅, Word ✅, Excel ⏳)

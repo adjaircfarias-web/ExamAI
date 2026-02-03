@@ -41,7 +41,15 @@ builder.Services.AddSingleton<IChatClient>(sp =>
 // ===================================================
 // Configure Document Parsers
 // ===================================================
-builder.Services.AddScoped<IDocumentParser, PdfParser>();
+builder.Services.AddScoped<PdfParser>();
+builder.Services.AddScoped<WordParser>();
+
+// Registrar múltiplos parsers
+builder.Services.AddScoped<IEnumerable<IDocumentParser>>(sp => new IDocumentParser[]
+{
+    sp.GetRequiredService<PdfParser>(),
+    sp.GetRequiredService<WordParser>()
+});
 
 // ===================================================
 // Configure OpenAPI/Swagger

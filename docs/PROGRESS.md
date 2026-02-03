@@ -130,6 +130,27 @@ Host=localhost;Database=examai;Username=postgres;Password=postgres123;Port=5432
 
 ---
 
+### **US-006: Implementar parser de Word** ✅ COMPLETO
+**Data:** 03/02/2026
+
+- [x] Pacote DocumentFormat.OpenXml instalado (3.4.1)
+- [x] Classe WordParser implementada
+- [x] Extração de parágrafos
+- [x] Extração de tabelas
+- [x] Registrado no DI container (Program.cs)
+- [x] Tratamento de erros (documento corrompido, vazio)
+- [x] Logging detalhado
+- [x] Documentação atualizada (docs/PARSERS.md)
+- [x] Build funcionando (0 warnings, 0 errors)
+- [ ] Teste com 3 documentos Word reais (⚠️ PENDENTE - usuário precisa testar)
+
+**Características:**
+- Extrai texto de documentos .docx
+- Suporta tabelas
+- Não suporta .doc antigo
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -139,11 +160,6 @@ Nenhuma US em andamento no momento.
 ## 📋 Próximas US (Backlog)
 
 ### **Sprint 2: Parsing de Documentos**
-
-#### **US-006: Implementar parser de Word**
-- [ ] Pacote DocumentFormat.OpenXml instalado
-- [ ] Classe WordParser implementada
-- [ ] Teste com 3 documentos Word reais
 
 #### **US-007: Implementar parser de Excel**
 - [ ] Pacote EPPlus instalado
@@ -253,9 +269,9 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 5 / 23 (22%)
-- **US Pendentes:** 18 / 23 (78%)
-- **Sprint Atual:** Sprint 2 (Parsing) - 50% completo (2/4 US básicas)
+- **US Completas:** 6 / 23 (26%)
+- **US Pendentes:** 17 / 23 (74%)
+- **Sprint Atual:** Sprint 2 (Parsing) - 75% completo (3/4 US básicas)
 - **Sprint Anterior:** Sprint 1 (Setup) - 100% completo ✅
 
 ---
