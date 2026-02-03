@@ -4,6 +4,7 @@ using ExamAI.Domain.Interfaces;
 using ExamAI.Infrastructure.Data;
 using ExamAI.Infrastructure.Parsers;
 using ExamAI.Infrastructure.Repositories;
+using ExamAI.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
@@ -67,6 +68,9 @@ builder.Services.AddScoped<MedicalExamPipeline>();
 
 // Registrar Repositories
 builder.Services.AddScoped<ExamRepository>();
+
+// Registrar Services
+builder.Services.AddScoped<DocumentHashService>();
 
 // ===================================================
 // Configure HTTP Client Factory
@@ -438,11 +442,12 @@ app.MapPost("/test/extract-validate", async (
 .WithTags("Testing")
 .DisableAntiforgery();
 
-// Endpoint completo: processar + salvar no banco
+// Endpoint completo: processar + salvar no banco (com detecção de duplicatas)
 app.MapPost("/api/process-and-save", async (
     IFormFile file,
     MedicalExamPipeline pipeline,
     ExamRepository repository,
+    DocumentHashService hashService,
     ILogger<Program> logger) =>
 {
     try
@@ -450,14 +455,51 @@ app.MapPost("/api/process-and-save", async (
         logger.LogInformation("Processing and saving exam: {FileName} ({Size} bytes)", 
             file.FileName, file.Length);
 
-        // 1. Criar documento no banco
+        // 1. Calcular hash SHA256 do arquivo
+        using var hashStream = file.OpenReadStream();
+        var fileHash = await hashService.ComputeSha256Async(hashStream);
+        
+        logger.LogInformation("File hash: {Hash}", fileHash);
+
+        // 2. Verificar se documento já foi processado (duplicata)
+        var existingDocumento = await repository.FindDocumentoByHashAsync(fileHash);
+        
+        if (existingDocumento != null)
+        {
+            logger.LogInformation(
+                "Duplicate document found! Hash: {Hash}, Documento ID: {DocumentoId}",
+                fileHash,
+                existingDocumento.Id);
+
+            // Retornar resultado existente sem reprocessar
+            return Results.Ok(new
+            {
+                success = true,
+                duplicate = true,
+                documentoId = existingDocumento.Id,
+                pacienteId = existingDocumento.PacienteId,
+                fileName = existingDocumento.NomeArquivo,
+                message = "Document already processed. Returning cached result.",
+                status = existingDocumento.StatusProcessamento,
+                processedAt = existingDocumento.DataUpload,
+                exames = existingDocumento.Exames.Select(e => new
+                {
+                    id = e.Id,
+                    tipo = e.TipoExame.Nome,
+                    dataColeta = e.DataColeta,
+                    resultadosCount = e.Resultados.Count
+                })
+            });
+        }
+
+        // 3. Criar documento no banco
         var documento = new ExamAI.Domain.Entities.Documento
         {
             Id = Guid.NewGuid(),
             NomeArquivo = file.FileName,
             TipoArquivo = Path.GetExtension(file.FileName),
             TamanhoBytes = file.Length,
-            HashSha256 = "temp", // Será implementado na US-014
+            HashSha256 = fileHash,
             StatusProcessamento = "processing",
             DataUpload = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
@@ -470,7 +512,7 @@ app.MapPost("/api/process-and-save", async (
 
         logger.LogInformation("Created documento ID: {DocumentoId}", documento.Id);
 
-        // 2. Processar documento
+        // 4. Processar documento
         using var stream = file.OpenReadStream();
         var result = await pipeline.ProcessAsync(stream, file.FileName);
 
@@ -489,7 +531,7 @@ app.MapPost("/api/process-and-save", async (
             }, statusCode: 500);
         }
 
-        // 3. Salvar resultado no banco
+        // 5. Salvar resultado no banco
         var pacienteId = await repository.SaveExamAsync(result, documento.Id);
 
         logger.LogInformation("Saved exam result for paciente ID: {PacienteId}", pacienteId);
@@ -497,9 +539,11 @@ app.MapPost("/api/process-and-save", async (
         return Results.Ok(new
         {
             success = true,
+            duplicate = false,
             documentoId = documento.Id,
             pacienteId = pacienteId,
             fileName = result.FileName,
+            fileHash = fileHash,
             data = result.Data,
             validation = new
             {

@@ -178,6 +178,38 @@ public class ExamRepository
     }
 
     /// <summary>
+    /// Verifica se um documento com o hash já existe
+    /// </summary>
+    public async Task<Domain.Entities.Documento?> FindDocumentoByHashAsync(
+        string hashSha256,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(hashSha256))
+            throw new ArgumentException("Hash cannot be empty", nameof(hashSha256));
+
+        _logger.LogDebug("Searching for documento with hash: {Hash}", hashSha256);
+
+        var documento = await _context.Documentos
+            .Include(d => d.Paciente)
+            .Include(d => d.Exames)
+                .ThenInclude(e => e.TipoExame)
+            .Include(d => d.Exames)
+                .ThenInclude(e => e.Resultados)
+            .FirstOrDefaultAsync(d => d.HashSha256 == hashSha256, cancellationToken);
+
+        if (documento != null)
+        {
+            _logger.LogInformation(
+                "Found existing documento with hash {Hash}: ID {DocumentoId}, Status {Status}",
+                hashSha256,
+                documento.Id,
+                documento.StatusProcessamento);
+        }
+
+        return documento;
+    }
+
+    /// <summary>
     /// Busca um exame específico por ID
     /// </summary>
     public async Task<Exame?> GetExamByIdAsync(

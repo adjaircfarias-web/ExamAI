@@ -1,6 +1,6 @@
 # 📊 Progress Tracker - ExamAI
 
-**Última atualização:** 04/02/2026 - 01:15 (US-013 completa - Sprint 4 iniciada!)
+**Última atualização:** 04/02/2026 - 01:30 (US-014 completa - **Sprint 4 FINALIZADA!** 🎉)
 
 ---
 
@@ -351,6 +351,31 @@ EPPlus 8+ usa licença PolyForm Noncommercial. Uso comercial requer licença pag
 
 ---
 
+### **US-014: Implementar hash de documentos** ✅ COMPLETO
+**Data:** 04/02/2026
+
+- [x] DocumentHashService implementado
+- [x] Cálculo de SHA256 do arquivo no upload
+- [x] Método FindDocumentoByHashAsync no ExamRepository
+- [x] Verificação de hash antes de processar
+- [x] Retorna resultado existente se duplicata encontrada
+- [x] Prossegue com pipeline se documento novo
+- [x] Registrado no DI container
+- [x] Endpoint /api/process-and-save atualizado com detecção de duplicatas
+- [x] Build funcionando (0 errors, 4 warnings de null-safety)
+
+**Características:**
+- Hash SHA256 para identificação única
+- Detecção de duplicatas antes de processar
+- Economia de recursos (evita reprocessamento)
+- Retorna resultado cacheado instantaneamente
+- Logs informativos de duplicatas
+- Campo `duplicate: true/false` no response
+
+**🎉 Sprint 4 (Persistência) COMPLETA - 2/2 US implementadas!**
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -464,13 +489,14 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 13 / 23 (57%)
-- **US Pendentes:** 10 / 23 (43%)
-- **Sprint Atual:** Sprint 4 (Persistência) - 50% (1/2 US)
+- **US Completas:** 14 / 23 (61%)
+- **US Pendentes:** 9 / 23 (39%)
+- **Sprint Atual:** Sprint 5 (API REST) - 0% (0/6 US)
 - **Sprints Anteriores:** 
   - Sprint 1 (Setup) - 100% completo ✅
   - Sprint 2 (Parsing) - 100% completo ✅
   - Sprint 3 (Extração com IA) - 100% completo ✅
+  - Sprint 4 (Persistência) - 100% completo ✅
 
 ---
 
@@ -489,8 +515,10 @@ Nenhuma US em andamento no momento.
 5. ✅ **Sprint 1 (Setup) COMPLETO!** 🎉
 6. ✅ **Sprint 2 (Parsing) COMPLETO!** 🎉 
 7. ✅ **Sprint 3 (Extração com IA) COMPLETO!** 🤖
-8. ✅ **US-013 (ExamRepository) COMPLETA!** 💾
-9. ➡️ **Próximo:** US-014 (Hash de documentos) - **Última US da Sprint 4!**
+8. ✅ **Sprint 4 (Persistência) COMPLETO!** 💾
+9. ➡️ **Próximo:** Sprint 5 - API REST (US-015 a US-020)
+
+**🎊 61% do MVP concluído! 4 sprints completas!**
 
 ---
 
