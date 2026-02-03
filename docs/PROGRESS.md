@@ -1,6 +1,6 @@
 # 📊 Progress Tracker - ExamAI
 
-**Última atualização:** 04/02/2026 - 00:55 (US-012 completa - **Sprint 3 FINALIZADA!** 🎉)
+**Última atualização:** 04/02/2026 - 01:15 (US-013 completa - Sprint 4 iniciada!)
 
 ---
 
@@ -321,6 +321,36 @@ EPPlus 8+ usa licença PolyForm Noncommercial. Uso comercial requer licença pag
 
 ---
 
+### **US-013: Implementar repositório de dados** ✅ COMPLETO
+**Data:** 04/02/2026
+
+- [x] ExamRepository implementado
+- [x] Métodos implementados:
+  - ✅ SaveExamAsync(ExamResult, documentId) - Salva resultado completo
+  - ✅ GetExamsByPacienteAsync(cpf, filtros) - Busca por CPF com filtros opcionais
+  - ✅ GetExamByIdAsync(exameId) - Busca exame específico
+- [x] Transações atômicas (salvar paciente + documento + exames)
+- [x] Tratamento de duplicados:
+  - ✅ Busca paciente existente por nome
+  - ✅ Busca tipo_exame existente (match exato/parcial)
+  - ✅ Cria novo registro se não existir
+- [x] Referência Application → Infrastructure adicionada
+- [x] Registrado no DI container
+- [x] Endpoints implementados:
+  - ✅ POST /api/process-and-save - Processa e salva no banco
+  - ✅ GET /api/exams/paciente/{cpf} - Busca por CPF
+  - ✅ GET /api/exams/{exameId} - Busca por ID
+- [x] Build funcionando (0 errors, 3 warnings de null-safety)
+
+**Características:**
+- Transações para garantir atomicidade
+- Auto-criação de pacientes e tipos de exame
+- Filtros opcionais (dataInicio, dataFim, tipoExame)
+- Include automático de navegações (Paciente, TipoExame, Resultados)
+- Logs detalhados de persistência
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -434,9 +464,9 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 12 / 23 (52%)
-- **US Pendentes:** 11 / 23 (48%)
-- **Sprint Atual:** Sprint 4 (Persistência) - 0% (0/2 US)
+- **US Completas:** 13 / 23 (57%)
+- **US Pendentes:** 10 / 23 (43%)
+- **Sprint Atual:** Sprint 4 (Persistência) - 50% (1/2 US)
 - **Sprints Anteriores:** 
   - Sprint 1 (Setup) - 100% completo ✅
   - Sprint 2 (Parsing) - 100% completo ✅
@@ -459,7 +489,8 @@ Nenhuma US em andamento no momento.
 5. ✅ **Sprint 1 (Setup) COMPLETO!** 🎉
 6. ✅ **Sprint 2 (Parsing) COMPLETO!** 🎉 
 7. ✅ **Sprint 3 (Extração com IA) COMPLETO!** 🤖
-8. ➡️ **Próximo:** Sprint 4 - Persistência (US-013: ExamRepository, US-014: Hash de documentos)
+8. ✅ **US-013 (ExamRepository) COMPLETA!** 💾
+9. ➡️ **Próximo:** US-014 (Hash de documentos) - **Última US da Sprint 4!**
 
 ---
 

@@ -3,6 +3,7 @@ using ExamAI.Application.Pipelines;
 using ExamAI.Domain.Interfaces;
 using ExamAI.Infrastructure.Data;
 using ExamAI.Infrastructure.Parsers;
+using ExamAI.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
@@ -63,6 +64,9 @@ builder.Services.AddScoped<NormalizationAgent>();
 
 // Registrar Pipeline
 builder.Services.AddScoped<MedicalExamPipeline>();
+
+// Registrar Repositories
+builder.Services.AddScoped<ExamRepository>();
 
 // ===================================================
 // Configure HTTP Client Factory
@@ -434,6 +438,97 @@ app.MapPost("/test/extract-validate", async (
 .WithTags("Testing")
 .DisableAntiforgery();
 
+// Endpoint completo: processar + salvar no banco
+app.MapPost("/api/process-and-save", async (
+    IFormFile file,
+    MedicalExamPipeline pipeline,
+    ExamRepository repository,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Processing and saving exam: {FileName} ({Size} bytes)", 
+            file.FileName, file.Length);
+
+        // 1. Criar documento no banco
+        var documento = new ExamAI.Domain.Entities.Documento
+        {
+            Id = Guid.NewGuid(),
+            NomeArquivo = file.FileName,
+            TipoArquivo = Path.GetExtension(file.FileName),
+            TamanhoBytes = file.Length,
+            HashSha256 = "temp", // Será implementado na US-014
+            StatusProcessamento = "processing",
+            DataUpload = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+        dbContext.Documentos.Add(documento);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Created documento ID: {DocumentoId}", documento.Id);
+
+        // 2. Processar documento
+        using var stream = file.OpenReadStream();
+        var result = await pipeline.ProcessAsync(stream, file.FileName);
+
+        if (!result.Success)
+        {
+            // Atualizar status para failed
+            documento.StatusProcessamento = "failed";
+            documento.ErroProcessamento = result.ErrorMessage;
+            await dbContext.SaveChangesAsync();
+
+            return Results.Json(new
+            {
+                success = false,
+                error = result.ErrorMessage,
+                documentoId = documento.Id
+            }, statusCode: 500);
+        }
+
+        // 3. Salvar resultado no banco
+        var pacienteId = await repository.SaveExamAsync(result, documento.Id);
+
+        logger.LogInformation("Saved exam result for paciente ID: {PacienteId}", pacienteId);
+
+        return Results.Ok(new
+        {
+            success = true,
+            documentoId = documento.Id,
+            pacienteId = pacienteId,
+            fileName = result.FileName,
+            data = result.Data,
+            validation = new
+            {
+                isValid = result.Validation?.IsValid ?? true,
+                warningCount = result.Validation?.Warnings.Count ?? 0,
+                warnings = result.Validation?.Warnings
+            },
+            stats = new
+            {
+                duration = result.Stats.Duration.TotalMilliseconds,
+                examesExtracted = result.Stats.ExamesExtracted,
+                validationWarnings = result.Stats.ValidationWarnings
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error processing and saving exam: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("ProcessAndSaveExam")
+.WithTags("Exams")
+.DisableAntiforgery();
+
 // Endpoint usando MedicalExamPipeline (recomendado)
 app.MapPost("/api/process-exam", async (
     IFormFile file,
@@ -495,6 +590,138 @@ app.MapPost("/api/process-exam", async (
 .WithName("ProcessExamDocument")
 .WithTags("Exams")
 .DisableAntiforgery();
+
+// Endpoint para buscar exames por CPF
+app.MapGet("/api/exams/paciente/{cpf}", async (
+    string cpf,
+    ExamRepository repository,
+    ILogger<Program> logger,
+    DateTime? dataInicio = null,
+    DateTime? dataFim = null,
+    string? tipoExame = null) =>
+{
+    try
+    {
+        logger.LogInformation("Searching exames for CPF: {CPF}", cpf);
+
+        var exames = await repository.GetExamsByPacienteAsync(
+            cpf, dataInicio, dataFim, tipoExame);
+
+        if (exames.Count == 0)
+        {
+            return Results.NotFound(new
+            {
+                success = false,
+                message = "No exams found for this CPF"
+            });
+        }
+
+        var paciente = exames.First().Documento.Paciente;
+
+        return Results.Ok(new
+        {
+            success = true,
+            paciente = new
+            {
+                id = paciente.Id,
+                nome = paciente.Nome,
+                cpf = paciente.Cpf,
+                dataNascimento = paciente.DataNascimento
+            },
+            exames = exames.Select(e => new
+            {
+                id = e.Id,
+                tipo = e.TipoExame.Nome,
+                categoria = e.TipoExame.Categoria,
+                dataColeta = e.DataColeta,
+                medicoSolicitante = e.MedicoSolicitante,
+                resultados = e.Resultados.Select(r => new
+                {
+                    parametro = r.Parametro,
+                    valor = r.ValorNumerico,
+                    unidade = r.Unidade,
+                    referenciaMin = r.ReferenciaMin,
+                    referenciaMax = r.ReferenciaMax,
+                    status = r.Status,
+                    observacoes = r.Observacoes
+                })
+            }),
+            total = exames.Count
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error searching exams for CPF: {CPF}", cpf);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("GetExamsByPaciente")
+.WithTags("Exams");
+
+// Endpoint para buscar exame específico
+app.MapGet("/api/exams/{exameId:guid}", async (
+    Guid exameId,
+    ExamRepository repository,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Searching exame with ID: {ExameId}", exameId);
+
+        var exame = await repository.GetExamByIdAsync(exameId);
+
+        if (exame == null)
+        {
+            return Results.NotFound(new
+            {
+                success = false,
+                message = "Exam not found"
+            });
+        }
+
+        return Results.Ok(new
+        {
+            success = true,
+            id = exame.Id,
+            tipo = exame.TipoExame.Nome,
+            categoria = exame.TipoExame.Categoria,
+            dataColeta = exame.DataColeta,
+            medicoSolicitante = exame.MedicoSolicitante,
+            paciente = new
+            {
+                id = exame.Documento.Paciente.Id,
+                nome = exame.Documento.Paciente.Nome,
+                cpf = exame.Documento.Paciente.Cpf
+            },
+            resultados = exame.Resultados.Select(r => new
+            {
+                id = r.Id,
+                parametro = r.Parametro,
+                valor = r.ValorNumerico,
+                unidade = r.Unidade,
+                referenciaMin = r.ReferenciaMin,
+                referenciaMax = r.ReferenciaMax,
+                status = r.Status,
+                observacoes = r.Observacoes
+            })
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error searching exame with ID: {ExameId}", exameId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("GetExamById")
+.WithTags("Exams");
 
 // Endpoint para testar apenas a extração (texto → JSON)
 app.MapPost("/test/extract-from-text", async (
