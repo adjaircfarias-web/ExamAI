@@ -1,4 +1,5 @@
 using ExamAI.Application.Agents;
+using ExamAI.Application.Pipelines;
 using ExamAI.Domain.Interfaces;
 using ExamAI.Infrastructure.Data;
 using ExamAI.Infrastructure.Parsers;
@@ -59,6 +60,9 @@ builder.Services.AddScoped<DocumentParserAgent>();
 builder.Services.AddScoped<ExtractionAgent>();
 builder.Services.AddScoped<ValidationAgent>();
 builder.Services.AddScoped<NormalizationAgent>();
+
+// Registrar Pipeline
+builder.Services.AddScoped<MedicalExamPipeline>();
 
 // ===================================================
 // Configure HTTP Client Factory
@@ -428,6 +432,68 @@ app.MapPost("/test/extract-validate", async (
 })
 .WithName("TestExtractAndValidate")
 .WithTags("Testing")
+.DisableAntiforgery();
+
+// Endpoint usando MedicalExamPipeline (recomendado)
+app.MapPost("/api/process-exam", async (
+    IFormFile file,
+    MedicalExamPipeline pipeline,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Processing exam document: {FileName} ({Size} bytes)", 
+            file.FileName, file.Length);
+
+        using var stream = file.OpenReadStream();
+        var result = await pipeline.ProcessAsync(stream, file.FileName);
+
+        if (!result.Success)
+        {
+            return Results.Json(new
+            {
+                success = false,
+                error = result.ErrorMessage,
+                fileName = result.FileName,
+                stats = result.Stats
+            }, statusCode: 500);
+        }
+
+        return Results.Ok(new
+        {
+            success = true,
+            fileName = result.FileName,
+            fileSize = result.FileSize,
+            data = result.Data,
+            validation = new
+            {
+                isValid = result.Validation?.IsValid ?? true,
+                warningCount = result.Validation?.Warnings.Count ?? 0,
+                warnings = result.Validation?.Warnings
+            },
+            stats = new
+            {
+                duration = result.Stats.Duration.TotalMilliseconds,
+                examesExtracted = result.Stats.ExamesExtracted,
+                validationWarnings = result.Stats.ValidationWarnings,
+                stepDurations = result.Stats.StepDurations.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.TotalMilliseconds)
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error processing exam: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("ProcessExamDocument")
+.WithTags("Exams")
 .DisableAntiforgery();
 
 // Endpoint para testar apenas a extração (texto → JSON)
