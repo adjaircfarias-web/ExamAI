@@ -1,3 +1,4 @@
+using ExamAI.Application.Agents;
 using ExamAI.Domain.Interfaces;
 using ExamAI.Infrastructure.Data;
 using ExamAI.Infrastructure.Parsers;
@@ -43,13 +44,18 @@ builder.Services.AddSingleton<IChatClient>(sp =>
 // ===================================================
 builder.Services.AddScoped<PdfParser>();
 builder.Services.AddScoped<WordParser>();
+builder.Services.AddScoped<ExcelParser>();
 
 // Registrar múltiplos parsers
 builder.Services.AddScoped<IEnumerable<IDocumentParser>>(sp => new IDocumentParser[]
 {
     sp.GetRequiredService<PdfParser>(),
-    sp.GetRequiredService<WordParser>()
+    sp.GetRequiredService<WordParser>(),
+    sp.GetRequiredService<ExcelParser>()
 });
+
+// Registrar DocumentParserAgent (orquestrador)
+builder.Services.AddScoped<DocumentParserAgent>();
 
 // ===================================================
 // Configure OpenAPI/Swagger
@@ -184,5 +190,69 @@ app.MapGet("/health/database", async (AppDbContext dbContext, ILogger<Program> l
 })
 .WithName("DatabaseHealthCheck")
 .WithTags("Health");
+
+// ===================================================
+// Test Endpoints (Parsers)
+// ===================================================
+
+// Endpoint para testar DocumentParserAgent
+app.MapPost("/test/parse-document", async (
+    IFormFile file,
+    DocumentParserAgent parserAgent,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Parsing document: {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+        using var stream = file.OpenReadStream();
+        var extractedText = await parserAgent.ExtractTextAsync(stream, file.FileName);
+
+        return Results.Ok(new
+        {
+            success = true,
+            fileName = file.FileName,
+            fileSize = file.Length,
+            extractedChars = extractedText.Length,
+            extractedText = extractedText,
+            supportedFormats = parserAgent.GetSupportedFormats()
+        });
+    }
+    catch (NotSupportedException ex)
+    {
+        logger.LogWarning(ex, "File format not supported: {FileName}", file.FileName);
+        return Results.BadRequest(new
+        {
+            success = false,
+            error = ex.Message,
+            supportedFormats = parserAgent.GetSupportedFormats()
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to parse document: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("TestDocumentParsing")
+.WithTags("Testing")
+.DisableAntiforgery();
+
+// Endpoint para listar formatos suportados
+app.MapGet("/test/supported-formats", (DocumentParserAgent parserAgent) =>
+{
+    var formats = parserAgent.GetSupportedFormats();
+    return Results.Ok(new
+    {
+        supportedFormats = formats,
+        count = formats.Count()
+    });
+})
+.WithName("GetSupportedFormats")
+.WithTags("Testing");
 
 app.Run();
