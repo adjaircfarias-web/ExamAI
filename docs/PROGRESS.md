@@ -1,0 +1,239 @@
+# 📊 Progress Tracker - ExamAI
+
+**Última atualização:** 03/02/2026
+
+---
+
+## ✅ Implementado
+
+### **US-001: Criar estrutura do projeto .NET** ✅ COMPLETO
+**Data:** 02/02/2026
+
+- [x] Solution criada com 4 projetos
+- [x] Referências entre projetos configuradas
+- [x] .gitignore configurado
+- [x] README.md criado
+- [x] Estrutura de pastas organizada
+- [x] Build funcionando (0 warnings, 0 errors)
+
+**Estrutura:**
+```
+ExamAI/
+├── src/
+│   ├── ExamAI.Api/              (API REST)
+│   ├── ExamAI.Application/      (Agents, Services, DTOs)
+│   ├── ExamAI.Domain/           (Entities, Interfaces, ValueObjects)
+│   └── ExamAI.Infrastructure/   (Data, Repositories, Parsers)
+├── docs/
+├── Plan/
+├── .gitignore
+├── README.md
+└── ExamAI.sln
+```
+
+---
+
+### **US-002: Configurar banco PostgreSQL** ✅ COMPLETO
+**Data:** 02/02/2026
+
+- [x] Pacotes NuGet instalados
+  - Npgsql.EntityFrameworkCore.PostgreSQL (10.0.2)
+  - Microsoft.EntityFrameworkCore.Design (10.0.2)
+  - Microsoft.EntityFrameworkCore.Tools (10.0.2)
+- [x] Connection string configurada no appsettings.json
+- [x] Documentação criada (docs/SETUP-POSTGRES.md)
+- [ ] PostgreSQL rodando (⚠️ PENDENTE - usuário precisa subir)
+
+**Connection String:**
+```
+Host=localhost;Database=examai;Username=postgres;Password=postgres123;Port=5432
+```
+
+---
+
+### **US-003: Criar modelo de dados e migrations** ✅ COMPLETO
+**Data:** 03/02/2026
+
+- [x] Entidades criadas no Domain
+  - Paciente
+  - Documento
+  - TipoExame
+  - Exame
+  - ResultadoExame
+- [x] AppDbContext configurado no Infrastructure
+- [x] Fluent API configurada para todas entidades
+- [x] Seed data para tipos_exame (10 tipos pré-cadastrados)
+- [x] Migration inicial criada (InitialCreate)
+- [x] Program.cs configurado com DbContext
+- [x] Documentação criada (docs/MIGRATIONS.md)
+- [ ] Migration aplicada (⚠️ PENDENTE - aguarda PostgreSQL rodar)
+
+**Tabelas criadas:**
+- pacientes
+- documentos
+- tipos_exame (com seed de 10 tipos)
+- exames
+- resultados_exame
+
+**Migration:**
+- 20260203012728_InitialCreate
+
+---
+
+## 🚧 Em Andamento
+
+Nenhuma US em andamento no momento.
+
+---
+
+## 📋 Próximas US (Backlog)
+
+### **Sprint 2: Parsing de Documentos**
+
+#### **US-004: Configurar integração com Ollama** 🔜
+- [ ] Pacote Microsoft.Extensions.AI.Ollama instalado
+- [ ] IChatClient configurado no Program.cs
+- [ ] Health check endpoint (/health/ollama)
+- [ ] Teste manual funcionando
+
+#### **US-005: Implementar parser de PDF**
+- [ ] Pacote itext7 instalado
+- [ ] Interface IDocumentParser criada
+- [ ] Classe PdfParser implementada
+- [ ] Teste com 3 PDFs reais
+
+#### **US-006: Implementar parser de Word**
+- [ ] Pacote DocumentFormat.OpenXml instalado
+- [ ] Classe WordParser implementada
+- [ ] Teste com 3 documentos Word reais
+
+#### **US-007: Implementar parser de Excel**
+- [ ] Pacote EPPlus instalado
+- [ ] Classe ExcelParser implementada
+- [ ] Teste com 3 planilhas reais
+
+#### **US-008: Criar DocumentParserAgent**
+- [ ] DocumentParserAgent implementado
+- [ ] Detecta tipo por extensão
+- [ ] Chama parser correto
+- [ ] Tratamento de erros
+
+---
+
+### **Sprint 3: Extração com IA**
+
+#### **US-009: Implementar ExtractionAgent**
+- [ ] ExtractionAgent implementado
+- [ ] System prompt otimizado
+- [ ] Parsing de JSON do LLM
+- [ ] Retry logic para erros
+- [ ] Teste com 10 docs reais (meta: >85% precisão)
+
+#### **US-010: Implementar ValidationAgent**
+- [ ] ValidationAgent implementado
+- [ ] Validações básicas
+- [ ] Lista de warnings
+- [ ] Logs
+
+#### **US-011: Implementar NormalizationAgent**
+- [ ] NormalizationAgent implementado
+- [ ] Normalização de nomes
+- [ ] Mapeamento para tipos_exame
+- [ ] Conversão de unidades (opcional)
+
+#### **US-012: Implementar MedicalExamPipeline**
+- [ ] MedicalExamPipeline implementado
+- [ ] Fluxo completo funcional
+- [ ] Logs em cada etapa
+- [ ] Tratamento de erro
+
+---
+
+### **Sprint 4: Persistência de Dados**
+
+#### **US-013: Implementar repositório**
+- [ ] ExamRepository implementado
+- [ ] SaveExamAsync
+- [ ] GetExamsByPacienteAsync
+- [ ] GetExamByIdAsync
+- [ ] Transações
+
+#### **US-014: Implementar hash de documentos**
+- [ ] SHA256 do arquivo
+- [ ] Verificação de duplicatas
+- [ ] Evitar reprocessamento
+
+---
+
+### **Sprint 5: API REST**
+
+#### **US-015: Endpoint de upload**
+- [ ] POST /api/exams/upload
+- [ ] Validações
+- [ ] Pipeline assíncrono
+- [ ] Retorna 202 Accepted
+
+#### **US-016: Endpoint de status**
+- [ ] GET /api/exams/status/{id}
+
+#### **US-017: Endpoint consulta por paciente**
+- [ ] GET /api/exams/paciente/{cpf}
+- [ ] Filtros (data, tipo)
+
+#### **US-018: Endpoint consulta por exame**
+- [ ] GET /api/exams/{id}
+
+#### **US-019: Health checks**
+- [ ] GET /health
+- [ ] GET /health/ollama
+- [ ] GET /health/database
+
+#### **US-020: Swagger**
+- [ ] Swagger configurado
+- [ ] Documentação completa
+
+---
+
+### **Sprint 6: Deploy**
+
+#### **US-021: Dockerfile**
+- [ ] Dockerfile criado
+- [ ] Multi-stage build
+- [ ] Teste de build
+
+#### **US-022: Docker Compose**
+- [ ] docker-compose.yml
+- [ ] API + PostgreSQL
+- [ ] Teste completo
+
+#### **US-023: Documentação**
+- [ ] README.md completo
+- [ ] SETUP.md
+- [ ] Comentários no código
+
+---
+
+## 📈 Métricas
+
+- **US Completas:** 3 / 23 (13%)
+- **US Pendentes:** 20 / 23 (87%)
+- **Sprint Atual:** Sprint 1 (Setup) - 100% completo ✅
+- **Próxima Sprint:** Sprint 2 (Parsing)
+
+---
+
+## 🎯 Ações Pendentes
+
+### **Antes de continuar:**
+1. ⚠️ **Subir PostgreSQL** (Docker ou local)
+2. ⚠️ **Aplicar migrations:** `dotnet ef database update`
+3. ⚠️ **Verificar tabelas criadas:** `\dt` no psql
+
+### **Depois que PostgreSQL estiver ok:**
+4. ✅ Partir para US-004 (Configurar Ollama)
+
+---
+
+**Status Geral:** 🟢 No prazo | 🟡 Atenção | 🔴 Atrasado
+
+**Status Atual:** 🟢 No prazo (Sprint 1 completa)
