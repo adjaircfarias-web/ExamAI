@@ -78,21 +78,24 @@ builder.Services.AddScoped<DocumentHashService>();
 builder.Services.AddHttpClient();
 
 // ===================================================
-// Configure OpenAPI/Swagger
+// Configure OpenAPI/Swagger (US-020)
 // ===================================================
-builder.Services.AddOpenApi();
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
 // ===================================================
 // Configure HTTP Pipeline
 // ===================================================
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.MapOpenApi();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Medical Exam Extractor API v1");
+    c.RoutePrefix = "swagger";
+    c.DocumentTitle = "ExamAI API Documentation";
+});
 
 app.UseHttpsRedirection();
 app.MapControllers();
@@ -442,6 +445,136 @@ app.MapPost("/test/extract-validate", async (
 .WithTags("Testing")
 .DisableAntiforgery();
 
+// US-015: Endpoint de upload com validações completas
+app.MapPost("/api/exams/upload", async (
+    IFormFile file,
+    string? cpf,
+    string? nomePaciente,
+    MedicalExamPipeline pipeline,
+    ExamRepository repository,
+    DocumentHashService hashService,
+    ValidationAgent validationAgent,
+    ILogger<Program> logger) =>
+{
+    // Validações de entrada
+    if (file == null || file.Length == 0)
+    {
+        return Results.BadRequest(new { success = false, error = "File is required and cannot be empty" });
+    }
+
+    if (file.Length > 10 * 1024 * 1024) // 10MB
+    {
+        return Results.BadRequest(new { success = false, error = "File size exceeds 10MB limit" });
+    }
+
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    if (extension != ".pdf" && extension != ".docx" && extension != ".xlsx")
+    {
+        return Results.BadRequest(new
+        {
+            success = false,
+            error = "Invalid file format. Only .pdf, .docx, and .xlsx are supported"
+        });
+    }
+
+    if (!string.IsNullOrWhiteSpace(cpf))
+    {
+        // Validar CPF
+        if (!validationAgent.IsValidCpf(cpf))
+        {
+            return Results.BadRequest(new { success = false, error = "Invalid CPF format" });
+        }
+    }
+
+    try
+    {
+        logger.LogInformation(
+            "Upload received: {FileName} ({Size} bytes), CPF: {CPF}",
+            file.FileName, file.Length, cpf ?? "N/A");
+
+        // Calcular hash
+        using var hashStream = file.OpenReadStream();
+        var fileHash = await hashService.ComputeSha256Async(hashStream);
+
+        // Verificar duplicata
+        var existingDocumento = await repository.FindDocumentoByHashAsync(fileHash);
+        
+        if (existingDocumento != null)
+        {
+            return Results.Ok(new
+            {
+                success = true,
+                duplicate = true,
+                documentoId = existingDocumento.Id,
+                status = existingDocumento.StatusProcessamento,
+                message = "Document already processed"
+            });
+        }
+
+        // Criar documento
+        var documento = new ExamAI.Domain.Entities.Documento
+        {
+            Id = Guid.NewGuid(),
+            NomeArquivo = file.FileName,
+            TipoArquivo = extension,
+            TamanhoBytes = file.Length,
+            HashSha256 = fileHash,
+            StatusProcessamento = "processing",
+            DataUpload = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+        dbContext.Documentos.Add(documento);
+        await dbContext.SaveChangesAsync();
+
+        // Processar em background (simplificado - em produção seria task queue)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var processStream = file.OpenReadStream();
+                var result = await pipeline.ProcessAsync(processStream, file.FileName);
+                
+                if (result.Success)
+                {
+                    await repository.SaveExamAsync(result, documento.Id);
+                    logger.LogInformation("Background processing completed for documento {Id}", documento.Id);
+                }
+                else
+                {
+                    documento.StatusProcessamento = "failed";
+                    documento.ErroProcessamento = result.ErrorMessage;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Background processing failed for documento {Id}", documento.Id);
+            }
+        });
+
+        // Retornar 202 Accepted
+        return Results.Accepted($"/api/exams/status/{documento.Id}", new
+        {
+            success = true,
+            documentoId = documento.Id,
+            status = "processing",
+            message = "Document accepted for processing",
+            statusUrl = $"/api/exams/status/{documento.Id}"
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error uploading document: {FileName}", file.FileName);
+        return Results.Json(new { success = false, error = ex.Message }, statusCode: 500);
+    }
+})
+.WithName("UploadExam")
+.WithTags("Exams")
+.DisableAntiforgery();
+
 // Endpoint completo: processar + salvar no banco (com detecção de duplicatas)
 app.MapPost("/api/process-and-save", async (
     IFormFile file,
@@ -634,6 +767,65 @@ app.MapPost("/api/process-exam", async (
 .WithName("ProcessExamDocument")
 .WithTags("Exams")
 .DisableAntiforgery();
+
+// US-016: Endpoint de status de processamento
+app.MapGet("/api/exams/status/{documentoId:guid}", async (
+    Guid documentoId,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Checking status for documento: {DocumentoId}", documentoId);
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+        
+        var documento = await dbContext.Documentos
+            .Include(d => d.Exames)
+            .FirstOrDefaultAsync(d => d.Id == documentoId);
+
+        if (documento == null)
+        {
+            return Results.NotFound(new
+            {
+                success = false,
+                error = "Document not found"
+            });
+        }
+
+        var response = new
+        {
+            success = true,
+            documentoId = documento.Id,
+            status = documento.StatusProcessamento,
+            fileName = documento.NomeArquivo,
+            uploadedAt = documento.DataUpload,
+            examesExtraidos = documento.Exames.Count,
+            erros = documento.ErroProcessamento != null 
+                ? new[] { documento.ErroProcessamento } 
+                : Array.Empty<string>()
+        };
+
+        return documento.StatusProcessamento switch
+        {
+            "completed" => Results.Ok(response),
+            "failed" => Results.Json(response, statusCode: 200),
+            "processing" => Results.Json(response, statusCode: 202),
+            _ => Results.Json(response, statusCode: 200)
+        };
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error checking status for documento: {DocumentoId}", documentoId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("GetDocumentStatus")
+.WithTags("Exams");
 
 // Endpoint para buscar exames por CPF
 app.MapGet("/api/exams/paciente/{cpf}", async (
