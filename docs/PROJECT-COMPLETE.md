@@ -125,7 +125,7 @@
 - **C#** - Linguagem
 - **Entity Framework Core 10.0** - ORM
 - **PostgreSQL** - Banco de dados
-- **Ollama** - LLM local (llama3.1:8b)
+- **Ollama** - LLM local (llama3.1:70b) 🚀
 
 ### Bibliotecas
 - **iText7** (9.5.0) - Parser PDF

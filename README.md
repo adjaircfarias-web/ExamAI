@@ -22,7 +22,7 @@ cd src/ExamAI.Api
 dotnet ef database update
 
 # 3. Iniciar Ollama (se já instalado)
-ollama pull llama3.1:8b
+ollama pull llama3.1:70b
 
 # 4. Rodar API
 dotnet run
@@ -111,7 +111,7 @@ ExamAI/
 - **C#** - Linguagem
 - **Entity Framework Core 10** - ORM
 - **PostgreSQL 16** - Banco de dados
-- **Ollama** - LLM local (llama3.1:8b)
+- **Ollama** - LLM local (llama3.1:70b) 🚀
 
 ### Bibliotecas Principais
 - **iText7** (9.5.0) - Parser de PDF

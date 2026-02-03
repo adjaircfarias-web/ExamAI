@@ -15,7 +15,7 @@ public class ExtractionAgent
     private readonly ILogger<ExtractionAgent> _logger;
     private const int MaxRetries = 1;
     private const string OllamaUrl = "http://localhost:11434";
-    private const string Model = "llama3.1:8b";
+    private const string Model = "llama3.1:70b";
 
     public ExtractionAgent(
         IHttpClientFactory httpClientFactory,

@@ -25,7 +25,7 @@ builder.Services.AddSingleton<IChatClient>(sp =>
     var logger = sp.GetRequiredService<ILogger<Program>>();
 
     var ollamaUrl = config["Ollama:Url"] ?? "http://localhost:11434";
-    var model = config["Ollama:Model"] ?? "llama3.1:8b";
+    var model = config["Ollama:Model"] ?? "llama3.1:70b";
 
     logger.LogInformation("Configuring Ollama client: {Url}, Model: {Model}", ollamaUrl, model);
 
@@ -135,7 +135,7 @@ app.MapGet("/health/ollama", async (ILogger<Program> logger) =>
                 status = "healthy",
                 service = "Ollama",
                 url = "http://localhost:11434",
-                model = "llama3.1:8b",
+                model = "llama3.1:70b",
                 timestamp = DateTime.UtcNow
             });
         }
