@@ -1,4 +1,6 @@
+using ExamAI.Domain.Interfaces;
 using ExamAI.Infrastructure.Data;
+using ExamAI.Infrastructure.Parsers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
@@ -35,6 +37,11 @@ builder.Services.AddSingleton<IChatClient>(sp =>
         throw;
     }
 });
+
+// ===================================================
+// Configure Document Parsers
+// ===================================================
+builder.Services.AddScoped<IDocumentParser, PdfParser>();
 
 // ===================================================
 // Configure OpenAPI/Swagger

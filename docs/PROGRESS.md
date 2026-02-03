@@ -108,6 +108,28 @@ Host=localhost;Database=examai;Username=postgres;Password=postgres123;Port=5432
 
 ---
 
+### **US-005: Implementar parser de PDF** ✅ COMPLETO
+**Data:** 03/02/2026
+
+- [x] Pacote itext7 instalado (9.5.0)
+- [x] Interface IDocumentParser criada
+- [x] Classe PdfParser implementada
+- [x] Registrado no DI container (Program.cs)
+- [x] Tratamento de erros (PDF corrompido, páginas com erro)
+- [x] Logging detalhado
+- [x] Suporte a multi-página
+- [x] Aviso para PDFs escaneados
+- [x] Documentação criada (docs/PARSERS.md)
+- [x] Build funcionando (0 warnings, 0 errors)
+- [ ] Teste com 3 PDFs reais (⚠️ PENDENTE - usuário precisa testar)
+
+**Características:**
+- Extrai texto de PDFs digitais
+- Identifica páginas no output
+- Não suporta PDFs escaneados (OCR futuro)
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -117,12 +139,6 @@ Nenhuma US em andamento no momento.
 ## 📋 Próximas US (Backlog)
 
 ### **Sprint 2: Parsing de Documentos**
-
-#### **US-005: Implementar parser de PDF**
-- [ ] Pacote itext7 instalado
-- [ ] Interface IDocumentParser criada
-- [ ] Classe PdfParser implementada
-- [ ] Teste com 3 PDFs reais
 
 #### **US-006: Implementar parser de Word**
 - [ ] Pacote DocumentFormat.OpenXml instalado
@@ -237,9 +253,9 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 4 / 23 (17%)
-- **US Pendentes:** 19 / 23 (83%)
-- **Sprint Atual:** Sprint 2 (Parsing) - 25% completo (1/4 US básicas)
+- **US Completas:** 5 / 23 (22%)
+- **US Pendentes:** 18 / 23 (78%)
+- **Sprint Atual:** Sprint 2 (Parsing) - 50% completo (2/4 US básicas)
 - **Sprint Anterior:** Sprint 1 (Setup) - 100% completo ✅
 
 ---
