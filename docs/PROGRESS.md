@@ -1,6 +1,6 @@
 # 📊 Progress Tracker - ExamAI
 
-**Última atualização:** 03/02/2026 - 23:35 (US-008 completa - Sprint 2 FINALIZADA! 🎉)
+**Última atualização:** 04/02/2026 - 00:10 (US-009 completa - Sprint 3 iniciada!)
 
 ---
 
@@ -205,6 +205,35 @@ EPPlus 8+ usa licença PolyForm Noncommercial. Uso comercial requer licença pag
 
 ---
 
+### **US-009: Implementar ExtractionAgent com Ollama** ✅ COMPLETO
+**Data:** 04/02/2026
+
+- [x] ExtractionAgent implementado
+- [x] DTOs criados (ExamExtractionResult, PacienteInfo, ExameInfo)
+- [x] System prompt otimizado para exames médicos
+- [x] User prompt com texto do documento
+- [x] Chamada HTTP direta ao Ollama (/api/generate)
+- [x] Parsing de resposta JSON do LLM
+- [x] Extração de JSON de markdown code blocks
+- [x] Tratamento de resposta malformada (retry 1x)
+- [x] Pacotes adicionados:
+  - Microsoft.Extensions.AI (10.2.0)
+  - Microsoft.Extensions.Http (10.0.2)
+- [x] Registrado no DI container
+- [x] Endpoints de teste criados (/test/extract-full, /test/extract-from-text)
+- [x] Build funcionando (0 warnings, 0 errors)
+- [ ] Teste com 10 documentos reais, medir precisão (⚠️ PENDENTE)
+
+**Características:**
+- Temperature 0.1 (respostas determinísticas)
+- MaxTokens 4096
+- Formato JSON estruturado
+- Suporta campos nulos quando dados não disponíveis
+
+**Meta de Precisão:** >85% (a ser validado com testes reais)
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -318,9 +347,9 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 8 / 23 (35%)
-- **US Pendentes:** 15 / 23 (65%)
-- **Sprint Atual:** Sprint 3 (Extração com IA) - 0% (0/4 US)
+- **US Completas:** 9 / 23 (39%)
+- **US Pendentes:** 14 / 23 (61%)
+- **Sprint Atual:** Sprint 3 (Extração com IA) - 25% (1/4 US)
 - **Sprints Anteriores:** 
   - Sprint 1 (Setup) - 100% completo ✅
   - Sprint 2 (Parsing) - 100% completo ✅
@@ -341,7 +370,8 @@ Nenhuma US em andamento no momento.
 ### **Pronto para continuar:**
 5. ✅ **Sprint 1 (Setup) COMPLETO!** 🎉
 6. ✅ **Sprint 2 (Parsing) COMPLETO!** 🎉 
-7. ➡️ **Próximo:** Partir para **Sprint 3 - Extração com IA** (US-009: ExtractionAgent)
+7. ✅ **US-009 (ExtractionAgent) COMPLETA!** 🤖
+8. ➡️ **Próximo:** US-010 (ValidationAgent), US-011 (NormalizationAgent), US-012 (MedicalExamPipeline)
 
 ---
 
