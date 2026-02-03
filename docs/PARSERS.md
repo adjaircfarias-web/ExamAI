@@ -150,13 +150,65 @@ Glicemia	92 mg/dL	70-100
 
 ---
 
-### ⏳ **ExcelParser** (US-007)
+### ✅ **ExcelParser** (US-007)
 
-**Status:** Não implementado  
-**Biblioteca:** EPPlus  
+**Status:** Implementado  
+**Biblioteca:** EPPlus (8.4.1)  
 **Suporta:** Arquivos `.xlsx`
 
-**Próxima sprint**
+#### **Características:**
+
+- ✅ Extrai texto de planilhas Excel (.xlsx)
+- ✅ Suporta múltiplas planilhas (worksheets)
+- ✅ Formato tabular separado por pipe (`|`)
+- ✅ Ignora linhas completamente vazias
+- ✅ Tratamento de erros (Excel corrompido, planilhas vazias)
+- ✅ Logging detalhado
+- ⚠️ **Limitação:** Apenas .xlsx (não suporta .xls antigo)
+- ⚠️ **Licença:** EPPlus 8+ usa licença PolyForm Noncommercial (uso comercial requer licença paga)
+
+#### **Uso:**
+
+```csharp
+public class ExampleController : ControllerBase
+{
+    private readonly IEnumerable<IDocumentParser> _parsers;
+
+    public ExampleController(IEnumerable<IDocumentParser> parsers)
+    {
+        _parsers = parsers;
+    }
+
+    [HttpPost("test-excel")]
+    public async Task<IActionResult> TestExcel(IFormFile file)
+    {
+        var parser = _parsers.FirstOrDefault(p => p.SupportsFileType(".xlsx"));
+        
+        if (parser == null)
+            return BadRequest("No parser found for .xlsx");
+
+        using var stream = file.OpenReadStream();
+        var text = await parser.ExtractTextAsync(stream, ".xlsx");
+        return Ok(new { extractedText = text });
+    }
+}
+```
+
+#### **Output Exemplo:**
+
+```
+=== Planilha: Exame de Sangue ===
+
+Parâmetro | Valor | Unidade | Referência
+Colesterol Total | 210 | mg/dL | < 200
+Glicemia | 95 | mg/dL | 70-100
+Hemoglobina | 14.5 | g/dL | 12-16
+
+=== Planilha: Observações ===
+
+Data | Médico | Observação
+28/01/2026 | Dra. Maria | Valores ligeiramente elevados
+```
 
 ---
 
@@ -376,15 +428,26 @@ Para adicionar suporte a novos formatos:
 | Formatação complexa perdida | Baixo | Suficiente para extração de dados |
 | Cabeçalhos/rodapés não extraídos | Baixo | Adicionar extração se necessário |
 
+### **ExcelParser (EPPlus)**
+
+| Limitação | Impacto | Solução |
+|-----------|---------|---------|
+| Não suporta .xls antigo | Médio | Pedir para salvar como .xlsx |
+| Fórmulas não são calculadas | Baixo | EPPlus já retorna valores calculados |
+| Gráficos não são extraídos | Baixo | Não necessário para extração de dados |
+| Licença comercial necessária | Alto | Adquirir licença EPPlus para uso empresarial |
+| Formatação de células perdida | Baixo | Suficiente para extração de dados |
+
 ---
 
 ## 🚀 Próximos Passos
 
 ### **Implementar (próximas USs):**
 
-1. ~~**US-006:** WordParser (.docx)~~ ✅ COMPLETO
-2. **US-007:** ExcelParser (.xlsx) 🔜
-3. **US-008:** DocumentParserAgent (orquestrador que escolhe o parser correto)
+1. ~~**US-005:** PdfParser (.pdf)~~ ✅ COMPLETO
+2. ~~**US-006:** WordParser (.docx)~~ ✅ COMPLETO
+3. ~~**US-007:** ExcelParser (.xlsx)~~ ✅ COMPLETO
+4. **US-008:** DocumentParserAgent (orquestrador que escolhe o parser correto) 🔜 PRÓXIMO
 
 ### **Backlog futuro:**
 
@@ -404,6 +467,6 @@ Para adicionar suporte a novos formatos:
 
 ---
 
-**Última atualização:** 03/02/2026  
-**Versão:** 1.1  
-**Parsers implementados:** 2/3 (PDF ✅, Word ✅, Excel ⏳)
+**Última atualização:** 03/02/2026 - 23:15  
+**Versão:** 1.2  
+**Parsers implementados:** 3/3 (PDF ✅, Word ✅, Excel ✅) - **Sprint 2 Completo!** 🎉
