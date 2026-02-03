@@ -1,6 +1,6 @@
 # 📊 Progress Tracker - ExamAI
 
-**Última atualização:** 04/02/2026 - 00:25 (US-010 completa)
+**Última atualização:** 04/02/2026 - 00:40 (US-011 completa)
 
 ---
 
@@ -262,6 +262,35 @@ EPPlus 8+ usa licença PolyForm Noncommercial. Uso comercial requer licença pag
 
 ---
 
+### **US-011: Implementar NormalizationAgent** ✅ COMPLETO
+**Data:** 04/02/2026
+
+- [x] NormalizationAgent implementado
+- [x] Normalização de nomes de exames:
+  - ✅ "Col. Total" → "Colesterol Total"
+  - ✅ "Glicemia Jejum" → "Glicemia em Jejum"
+  - ✅ "TGO" → "TGO (AST)"
+  - ✅ "TGP" → "TGP (ALT)"
+  - ✅ 30+ mapeamentos de nomes comuns
+- [x] Normalização de unidades (trim básico)
+- [x] Normalização de status (lowercase)
+- [x] Dicionário estático de mapeamentos
+- [x] Match exato e parcial de nomes
+- [x] Logs detalhados de normalizações
+- [x] Registrado no DI container
+- [x] Endpoint de teste criado (/test/full-pipeline)
+- [x] Build funcionando (0 warnings, 0 errors)
+- [ ] Mapeamento para tipos_exame (⚠️ Será feito na camada de persistência - US-013)
+- [ ] Conversão de unidades (⚠️ Opcional, marcado como futuro)
+
+**Características:**
+- Dicionário com 30+ normalizações de exames comuns
+- Match case-insensitive
+- Match parcial quando necessário
+- Preserva dados originais quando não encontra mapeamento
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -375,9 +404,9 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 10 / 23 (43%)
-- **US Pendentes:** 13 / 23 (57%)
-- **Sprint Atual:** Sprint 3 (Extração com IA) - 50% (2/4 US)
+- **US Completas:** 11 / 23 (48%)
+- **US Pendentes:** 12 / 23 (52%)
+- **Sprint Atual:** Sprint 3 (Extração com IA) - 75% (3/4 US)
 - **Sprints Anteriores:** 
   - Sprint 1 (Setup) - 100% completo ✅
   - Sprint 2 (Parsing) - 100% completo ✅
@@ -400,7 +429,8 @@ Nenhuma US em andamento no momento.
 6. ✅ **Sprint 2 (Parsing) COMPLETO!** 🎉 
 7. ✅ **US-009 (ExtractionAgent) COMPLETA!** 🤖
 8. ✅ **US-010 (ValidationAgent) COMPLETA!** ✅
-9. ➡️ **Próximo:** US-011 (NormalizationAgent), US-012 (MedicalExamPipeline)
+9. ✅ **US-011 (NormalizationAgent) COMPLETA!** 🔄
+10. ➡️ **Próximo:** US-012 (MedicalExamPipeline) - **Última US da Sprint 3!**
 
 ---
 

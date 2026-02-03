@@ -58,6 +58,7 @@ builder.Services.AddScoped<IEnumerable<IDocumentParser>>(sp => new IDocumentPars
 builder.Services.AddScoped<DocumentParserAgent>();
 builder.Services.AddScoped<ExtractionAgent>();
 builder.Services.AddScoped<ValidationAgent>();
+builder.Services.AddScoped<NormalizationAgent>();
 
 // ===================================================
 // Configure HTTP Client Factory
@@ -320,6 +321,61 @@ app.MapPost("/test/extract-full", async (
     }
 })
 .WithName("TestFullExtraction")
+.WithTags("Testing")
+.DisableAntiforgery();
+
+// Endpoint pipeline completo: parse + extract + validate + normalize
+app.MapPost("/test/full-pipeline", async (
+    IFormFile file,
+    DocumentParserAgent parserAgent,
+    ExtractionAgent extractionAgent,
+    ValidationAgent validationAgent,
+    NormalizationAgent normalizationAgent,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Full pipeline: {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+        // Passo 1: Parse
+        using var stream = file.OpenReadStream();
+        var extractedText = await parserAgent.ExtractTextAsync(stream, file.FileName);
+
+        // Passo 2: Extract
+        var structuredData = await extractionAgent.ExtractAsync(extractedText);
+
+        // Passo 3: Validate
+        var validationResult = validationAgent.Validate(structuredData);
+
+        // Passo 4: Normalize
+        var normalizedData = await normalizationAgent.NormalizeAsync(structuredData);
+
+        return Results.Ok(new
+        {
+            success = true,
+            fileName = file.FileName,
+            fileSize = file.Length,
+            extractedTextChars = extractedText.Length,
+            structuredData = normalizedData,
+            validation = new
+            {
+                isValid = validationResult.IsValid,
+                warningCount = validationResult.Warnings.Count,
+                warnings = validationResult.Warnings
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in full pipeline: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("TestFullPipeline")
 .WithTags("Testing")
 .DisableAntiforgery();
 
