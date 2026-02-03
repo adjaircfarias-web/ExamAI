@@ -57,6 +57,7 @@ builder.Services.AddScoped<IEnumerable<IDocumentParser>>(sp => new IDocumentPars
 // Registrar Agents
 builder.Services.AddScoped<DocumentParserAgent>();
 builder.Services.AddScoped<ExtractionAgent>();
+builder.Services.AddScoped<ValidationAgent>();
 
 // ===================================================
 // Configure HTTP Client Factory
@@ -319,6 +320,57 @@ app.MapPost("/test/extract-full", async (
     }
 })
 .WithName("TestFullExtraction")
+.WithTags("Testing")
+.DisableAntiforgery();
+
+// Endpoint completo: parse + extract + validate
+app.MapPost("/test/extract-validate", async (
+    IFormFile file,
+    DocumentParserAgent parserAgent,
+    ExtractionAgent extractionAgent,
+    ValidationAgent validationAgent,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Full pipeline test: {FileName} ({Size} bytes)", file.FileName, file.Length);
+
+        // Passo 1: Parse
+        using var stream = file.OpenReadStream();
+        var extractedText = await parserAgent.ExtractTextAsync(stream, file.FileName);
+
+        // Passo 2: Extract
+        var structuredData = await extractionAgent.ExtractAsync(extractedText);
+
+        // Passo 3: Validate
+        var validationResult = validationAgent.Validate(structuredData);
+
+        return Results.Ok(new
+        {
+            success = true,
+            fileName = file.FileName,
+            fileSize = file.Length,
+            extractedTextChars = extractedText.Length,
+            structuredData = structuredData,
+            validation = new
+            {
+                isValid = validationResult.IsValid,
+                warningCount = validationResult.Warnings.Count,
+                warnings = validationResult.Warnings
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in extract-validate pipeline: {FileName}", file.FileName);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("TestExtractAndValidate")
 .WithTags("Testing")
 .DisableAntiforgery();
 
