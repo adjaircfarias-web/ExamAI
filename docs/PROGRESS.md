@@ -80,6 +80,34 @@ Host=localhost;Database=examai;Username=postgres;Password=postgres123;Port=5432
 
 ---
 
+---
+
+### **US-004: Configurar integração com Ollama** ✅ COMPLETO
+**Data:** 03/02/2026
+
+- [x] Pacotes NuGet instalados
+  - Microsoft.Extensions.AI (10.2.0)
+  - Microsoft.Extensions.AI.Ollama (9.7.0-preview)
+- [x] IChatClient configurado no Program.cs
+- [x] Ollama URL e modelo configurados no appsettings.json
+- [x] Health check endpoints criados
+  - /health (geral)
+  - /health/ollama
+  - /health/database
+- [x] Documentação criada
+  - docs/SETUP-OLLAMA.md
+  - docs/TEST-OLLAMA.md
+- [x] Build funcionando (0 warnings, 0 errors)
+- [ ] Teste manual (⚠️ PENDENTE - usuário precisa testar)
+
+**Configuração:**
+- URL: http://localhost:11434
+- Modelo: llama3.1:8b
+- Temperature: 0.1
+- MaxTokens: 4096
+
+---
+
 ## 🚧 Em Andamento
 
 Nenhuma US em andamento no momento.
@@ -89,12 +117,6 @@ Nenhuma US em andamento no momento.
 ## 📋 Próximas US (Backlog)
 
 ### **Sprint 2: Parsing de Documentos**
-
-#### **US-004: Configurar integração com Ollama** 🔜
-- [ ] Pacote Microsoft.Extensions.AI.Ollama instalado
-- [ ] IChatClient configurado no Program.cs
-- [ ] Health check endpoint (/health/ollama)
-- [ ] Teste manual funcionando
 
 #### **US-005: Implementar parser de PDF**
 - [ ] Pacote itext7 instalado
@@ -215,22 +237,26 @@ Nenhuma US em andamento no momento.
 
 ## 📈 Métricas
 
-- **US Completas:** 3 / 23 (13%)
-- **US Pendentes:** 20 / 23 (87%)
-- **Sprint Atual:** Sprint 1 (Setup) - 100% completo ✅
-- **Próxima Sprint:** Sprint 2 (Parsing)
+- **US Completas:** 4 / 23 (17%)
+- **US Pendentes:** 19 / 23 (83%)
+- **Sprint Atual:** Sprint 2 (Parsing) - 25% completo (1/4 US básicas)
+- **Sprint Anterior:** Sprint 1 (Setup) - 100% completo ✅
 
 ---
 
 ## 🎯 Ações Pendentes
 
-### **Antes de continuar:**
-1. ⚠️ **Subir PostgreSQL** (Docker ou local)
-2. ⚠️ **Aplicar migrations:** `dotnet ef database update`
-3. ⚠️ **Verificar tabelas criadas:** `\dt` no psql
+### **Recomendado testar antes de continuar:**
+1. ⚠️ **Subir PostgreSQL** (Docker ou local) - ver `docs/SETUP-POSTGRES.md`
+2. ⚠️ **Aplicar migrations:** `dotnet ef database update` - ver `docs/MIGRATIONS.md`
+3. ⚠️ **Verificar Ollama funcionando:** ver `docs/TEST-OLLAMA.md`
+4. ⚠️ **Testar health checks:** 
+   - `curl http://localhost:5000/health`
+   - `curl http://localhost:5000/health/ollama`
+   - `curl http://localhost:5000/health/database`
 
-### **Depois que PostgreSQL estiver ok:**
-4. ✅ Partir para US-004 (Configurar Ollama)
+### **Pronto para continuar:**
+5. ✅ Partir para US-005 (Implementar parser de PDF)
 
 ---
 
