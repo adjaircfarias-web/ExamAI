@@ -135,3 +135,16 @@ yarn-error.log*
 # Logs
 logs/
 *.log
+
+# Docker
+docker-compose.override.yml
+.env
+.env.local
+.env.*.local
+
+# Docker volumes (se por algum motivo forem commitados)
+/docker/postgres/data/
+
+# Backup files
+*.sql.backup
+backup*.sql

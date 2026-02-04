@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+
+# Dependencies
+**/node_modules/
+**/packages/
+
+# Docs
+docs/
+*.md
+!README.md
+
+# Tests
+**/TestResults/
+**/*Tests/
+
+# Environment
+.env
+.env.local
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

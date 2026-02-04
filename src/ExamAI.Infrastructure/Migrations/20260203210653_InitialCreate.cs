@@ -133,16 +133,16 @@ namespace ExamAI.Infrastructure.Migrations
                 columns: new[] { "id", "categoria", "created_at", "descricao", "nome" },
                 values: new object[,]
                 {
-                    { 1, "Hematologia", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(5723), null, "Hemograma Completo" },
-                    { 2, "Bioquímica", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6135), null, "Glicemia" },
-                    { 3, "Lipidograma", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6138), null, "Colesterol Total" },
-                    { 4, "Lipidograma", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6139), null, "HDL" },
-                    { 5, "Lipidograma", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6140), null, "LDL" },
-                    { 6, "Lipidograma", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6141), null, "Triglicerídeos" },
-                    { 7, "Função Renal", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6143), null, "Ureia" },
-                    { 8, "Função Renal", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6144), null, "Creatinina" },
-                    { 9, "Função Hepática", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6145), null, "TGO/AST" },
-                    { 10, "Função Hepática", new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6146), null, "TGP/ALT" }
+                    { 1, "Hematologia", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Hemograma Completo" },
+                    { 2, "Bioquímica", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Glicemia" },
+                    { 3, "Lipidograma", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Colesterol Total" },
+                    { 4, "Lipidograma", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "HDL" },
+                    { 5, "Lipidograma", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "LDL" },
+                    { 6, "Lipidograma", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Triglicerídeos" },
+                    { 7, "Função Renal", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Ureia" },
+                    { 8, "Função Renal", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Creatinina" },
+                    { 9, "Função Hepática", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "TGO/AST" },
+                    { 10, "Função Hepática", new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "TGP/ALT" }
                 });
 
             migrationBuilder.CreateIndex(

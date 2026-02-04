@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExamAI.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260203012728_InitialCreate")]
+    [Migration("20260203210653_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -294,70 +294,70 @@ namespace ExamAI.Infrastructure.Migrations
                         {
                             Id = 1,
                             Categoria = "Hematologia",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(5723),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Hemograma Completo"
                         },
                         new
                         {
                             Id = 2,
                             Categoria = "Bioquímica",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6135),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Glicemia"
                         },
                         new
                         {
                             Id = 3,
                             Categoria = "Lipidograma",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6138),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Colesterol Total"
                         },
                         new
                         {
                             Id = 4,
                             Categoria = "Lipidograma",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6139),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "HDL"
                         },
                         new
                         {
                             Id = 5,
                             Categoria = "Lipidograma",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6140),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "LDL"
                         },
                         new
                         {
                             Id = 6,
                             Categoria = "Lipidograma",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6141),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Triglicerídeos"
                         },
                         new
                         {
                             Id = 7,
                             Categoria = "Função Renal",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6143),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Ureia"
                         },
                         new
                         {
                             Id = 8,
                             Categoria = "Função Renal",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6144),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "Creatinina"
                         },
                         new
                         {
                             Id = 9,
                             Categoria = "Função Hepática",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6145),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "TGO/AST"
                         },
                         new
                         {
                             Id = 10,
                             Categoria = "Função Hepática",
-                            CreatedAt = new DateTime(2026, 2, 3, 1, 27, 24, 856, DateTimeKind.Utc).AddTicks(6146),
+                            CreatedAt = new DateTime(2026, 2, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Nome = "TGP/ALT"
                         });
                 });
