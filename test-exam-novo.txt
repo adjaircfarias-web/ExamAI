@@ -1,0 +1,8 @@
+﻿Exame de Sangue
+Paciente: Teste Sistema
+Data: 03/02/2026
+
+Hemograma Completo:
+- Hemácias: 4.8 milhões/mm³
+- Hemoglobina: 14.5 g/dL
+- Leucócitos: 7200/mm³

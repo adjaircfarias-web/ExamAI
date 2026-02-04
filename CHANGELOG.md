@@ -1,5 +1,30 @@
 # Changelog - ExamAI
 
+## [1.2.8] - 2026-02-04
+
+### 🔧 Correção: Ollama Model 404 Not Found
+
+**Corrigido:** appsettings.json configurado com modelo errado
+
+- ❌ Configurado: `llama3.1:70b` (não instalado)
+- ✅ Corrigido: `Llama3.1:latest` (disponível)
+
+Arquivo: `src/ExamAI.Api/appsettings.json`
+
+---
+
+## [1.2.7] - 2026-02-04
+
+### 🔧 Correção: Foreign Key Violation no /api/process-and-save
+
+**Corrigido:** Endpoint `/api/process-and-save` também corrigido (mesmo erro do upload)
+
+- ✅ Adicionados parâmetros `cpf` e `nomePaciente`
+- ✅ Paciente criado/buscado antes do documento
+- ✅ `PacienteId` sempre válido
+
+---
+
 ## [1.2.6] - 2026-02-04
 
 ### 🔧 Correção CRÍTICA: Foreign Key Violation no Upload
