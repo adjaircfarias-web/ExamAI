@@ -210,30 +210,6 @@ public class ExamRepository
     }
 
     /// <summary>
-    /// Busca um exame específico por ID
-    /// </summary>
-    public async Task<Exame?> GetExamByIdAsync(
-        Guid exameId,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Searching exame with ID: {ExameId}", exameId);
-
-        var exame = await _context.Exames
-            .Include(e => e.Documento)
-                .ThenInclude(d => d.Paciente)
-            .Include(e => e.TipoExame)
-            .Include(e => e.Resultados)
-            .FirstOrDefaultAsync(e => e.Id == exameId, cancellationToken);
-
-        if (exame == null)
-        {
-            _logger.LogWarning("Exame with ID {ExameId} not found", exameId);
-        }
-
-        return exame;
-    }
-
-    /// <summary>
     /// Busca ou cria um paciente
     /// </summary>
     private async Task<Paciente> GetOrCreatePacienteAsync(
