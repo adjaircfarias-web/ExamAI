@@ -1,5 +1,53 @@
 # Changelog - ExamAI
 
+## [1.3.1] - 2026-02-04
+
+### 🔧 Correção CRÍTICA: Foreign Key Violation ao salvar exames
+
+**Problema resolvido:** FK_exames_tipos_exame_tipo_exame_id violation
+
+#### O que foi corrigido:
+- ✅ `ExamRepository.cs` - `GetOrCreateTipoExameAsync` agora salva TipoExame imediatamente
+- ✅ TipoExame criado e salvo ANTES de criar Exame
+- ✅ Foreign key sempre válida quando Exame é criado
+
+#### Erro anterior:
+```
+PostgresException: 23503
+insert or update on table "exames" violates foreign key constraint 
+"FK_exames_tipos_exame_tipo_exame_id"
+```
+
+#### Causa:
+`GetOrCreateTipoExameAsync` criava TipoExame mas NÃO salvava no banco. Só adicionava ao contexto (_context.TiposExame.Add). Depois, ao tentar salvar todos os Exames de uma vez, as foreign keys não existiam.
+
+#### Solução:
+```csharp
+// ANTES (quebrava)
+private async Task<TipoExame> GetOrCreateTipoExameAsync(...)
+{
+    ...
+    var novoTipo = new TipoExame { ... };
+    _context.TiposExame.Add(novoTipo);
+    return novoTipo; // ❌ TipoExame ainda não está no banco!
+}
+
+// DEPOIS (funciona)
+private async Task<TipoExame> GetOrCreateTipoExameAsync(...)
+{
+    ...
+    var novoTipo = new TipoExame { ... };
+    _context.TiposExame.Add(novoTipo);
+    await _context.SaveChangesAsync(cancellationToken); // ✅ Salva AGORA
+    _logger.LogDebug("Created new tipo_exame: {Nome} with ID: {Id}", ...);
+    return novoTipo;
+}
+```
+
+**Agora o salvamento de exames funciona completamente!** 🎉
+
+---
+
 ## [1.3.0] - 2026-02-04
 
 ### 🔧 Correção CRÍTICA: ExtractionAgent usando configuração hardcoded

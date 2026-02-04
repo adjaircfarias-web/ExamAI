@@ -41,7 +41,8 @@ v1.2.6 - Foreign key violation (paciente)
 v1.2.7 - FK em /api/process-and-save
 v1.2.8 - appsettings.json (modelo Ollama)
 v1.2.9 - Endpoints DELETE/reprocess
-v1.3.0 - ExtractionAgent (configuração injetada) ← FINAL
+v1.3.0 - ExtractionAgent (configuração injetada)
+v1.3.1 - TipoExame salvo antes de criar Exame ← FINAL
 
 ========================================
 SISTEMA OPERACIONAL
@@ -93,7 +94,7 @@ DUPLICATE-FAILED-DOCS.md - Gerenciar duplicatas
 QUICK-START.md - Setup inicial
 
 ========================================
-VERSÃO ATUAL: 1.3.0
+VERSÃO ATUAL: 1.3.1
 STATUS: 🟢 TOTALMENTE OPERACIONAL
 DATA: 2026-02-04
 ========================================
