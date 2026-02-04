@@ -10,12 +10,19 @@ API para extração automática e inteligente de dados de exames médicos usando
 
 ## ⚡ Quick Start
 
+> 📖 **Primeira vez?** Veja o [QUICK-START.md](QUICK-START.md) - Guia completo em 5 minutos!
+> 
+> 📤 **Testar upload?** Veja o [UPLOAD-TEST.md](UPLOAD-TEST.md) - Guia de teste passo a passo!
+>
+> ♻️ **Documento falhou?** Veja o [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md) - Como deletar e reprocessar
+
+---
+
+### Opção 1: Docker Compose (Recomendado) 🐳
+
 ```bash
-# 1. Iniciar PostgreSQL
-docker run --name postgres-medical \
-  -e POSTGRES_PASSWORD=postgres123 \
-  -e POSTGRES_DB=examai \
-  -p 5432:5432 -d postgres:16-alpine
+# 1. Subir PostgreSQL + pgAdmin
+docker-compose up -d
 
 # 2. Aplicar migrations
 cd src/ExamAI.Api
@@ -29,6 +36,40 @@ dotnet run
 
 # 5. Acessar Swagger
 # http://localhost:5076/swagger
+```
+
+### Opção 2: Docker Manual
+
+```bash
+# 1. Iniciar PostgreSQL
+docker run --name examai-postgres \
+  -e POSTGRES_PASSWORD=postgres123 \
+  -e POSTGRES_DB=examai \
+  -p 5432:5432 \
+  -v examai_data:/var/lib/postgresql/data \
+  -d postgres:16-alpine
+
+# 2-5. Seguir os mesmos passos acima
+```
+
+### Opção 3: Usando Makefile (Alternativo)
+
+```bash
+# Setup completo
+make setup
+
+# Rodar API
+make run
+
+# Ver comandos disponíveis
+make help
+```
+
+### Opção 4: PostgreSQL Local
+
+Se você já tem PostgreSQL instalado localmente, apenas crie o banco:
+```sql
+CREATE DATABASE examai;
 ```
 
 ---
@@ -94,11 +135,19 @@ ExamAI/
 │   ├── ExamAI.Application/      # Agents + Pipeline + DTOs
 │   ├── ExamAI.Domain/           # Entidades + Interfaces
 │   └── ExamAI.Infrastructure/   # Parsers + Repository + Services
+├── docker/                      # 🐳 Configurações Docker
+│   ├── postgres/
+│   │   ├── Dockerfile           # Imagem PostgreSQL customizada
+│   │   └── init/                # Scripts de inicialização
+│   └── README.md                # Documentação Docker
 ├── docs/                        # Documentação completa
 │   ├── PROJECT-COMPLETE.md      # 📖 Visão geral completa
 │   ├── PROGRESS.md              # Histórico de desenvolvimento
 │   ├── PARSERS.md               # Documentação dos parsers
 │   └── SPRINT-*-SUMMARY.md      # Resumos das sprints
+├── docker-compose.yml           # 🐳 Orquestração (PostgreSQL + pgAdmin)
+├── .env.example                 # Exemplo de variáveis de ambiente
+├── .dockerignore                # Arquivos ignorados no build Docker
 └── Plan/                        # Especificação original
 ```
 
@@ -130,11 +179,22 @@ ExamAI/
 
 ## 📖 Documentação Completa
 
-1. **[PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md)** - 📖 Visão geral completa do MVP
-2. **[PROGRESS.md](docs/PROGRESS.md)** - Histórico de todas as 20 USs
-3. **[PARSERS.md](docs/PARSERS.md)** - Documentação dos parsers
-4. **[SPRINT-*-SUMMARY.md](docs/)** - Resumos detalhados de cada sprint
-5. **[Swagger UI](http://localhost:5076/swagger)** - Documentação interativa
+### Guias de Setup
+1. **[QUICK-START.md](QUICK-START.md)** - ⚡ Setup em 5 minutos
+2. **[docker/README.md](docker/README.md)** - 🐳 Documentação Docker completa
+3. **[scripts/README.md](scripts/README.md)** - 🛠️ Scripts utilitários
+4. **[TEST-GUIDE.md](TEST-GUIDE.md)** - 🧪 Como testar o sistema
+5. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - 🔧 Soluções para problemas comuns
+
+### Documentação Técnica
+4. **[PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md)** - 📖 Visão geral completa do MVP
+5. **[PROGRESS.md](docs/PROGRESS.md)** - Histórico de todas as 20 USs
+6. **[PARSERS.md](docs/PARSERS.md)** - Documentação dos parsers
+7. **[SPRINT-*-SUMMARY.md](docs/)** - Resumos detalhados de cada sprint
+8. **[CHANGELOG.md](CHANGELOG.md)** - Histórico de versões
+
+### Documentação Interativa
+9. **[Swagger UI](http://localhost:5076/swagger)** - Documentação da API
 
 ---
 
@@ -295,6 +355,28 @@ tipos_exame (1) ─── (N) exames
 exames (1) ─── (N) resultados_exame
 ```
 
+### Gerenciamento via pgAdmin 🎯
+
+Se você subiu o Docker Compose, pode acessar o pgAdmin:
+
+1. **Acessar:** http://localhost:5050
+2. **Login:**
+   - Email: `admin@examai.com`
+   - Senha: `admin123`
+3. **Conectar ao PostgreSQL:**
+   - Host: `postgres` (ou `localhost` se externo)
+   - Port: `5432`
+   - Database: `examai`
+   - Username: `postgres`
+   - Password: `postgres123`
+
+**Interface visual para:**
+- ✅ Ver estrutura das tabelas
+- ✅ Executar queries SQL
+- ✅ Ver dados em tempo real
+- ✅ Fazer backup/restore
+- ✅ Monitorar performance
+
 ---
 
 ## 🎯 Casos de Uso Suportados
@@ -337,11 +419,45 @@ exames (1) ─── (N) resultados_exame
 
 ---
 
+## 🐳 Docker Setup
+
+O projeto inclui configuração completa com Docker Compose!
+
+### O que está incluído:
+- ✅ PostgreSQL 16 Alpine (otimizado)
+- ✅ pgAdmin 4 (interface web - opcional)
+- ✅ Volumes persistentes
+- ✅ Health checks
+- ✅ Rede isolada
+
+### Comandos principais:
+
+```bash
+# Subir tudo
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f postgres
+
+# Parar
+docker-compose down
+
+# Acessar pgAdmin
+http://localhost:5050
+# Email: admin@examai.com
+# Senha: admin123
+```
+
+📖 **Documentação completa:** [docker/README.md](docker/README.md)
+
+---
+
 ## 🚀 Instalação e Setup
 
 ### Pré-requisitos
 
 - **.NET 10 SDK** - https://dotnet.microsoft.com/download
+- **Docker & Docker Compose** - https://www.docker.com/get-started (recomendado)
 - **PostgreSQL 16+** - https://www.postgresql.org/download/ (ou Docker)
 - **Ollama** - https://ollama.com
 

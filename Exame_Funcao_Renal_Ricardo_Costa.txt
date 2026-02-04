@@ -1,0 +1,40 @@
+﻿LABORATÓRIO CLÍNICO XYZ
+Rua das Análises, 123 - São Paulo/SP
+
+===============================================
+         RESULTADO DE EXAME LABORATORIAL
+===============================================
+
+PACIENTE: Ricardo Costa
+CPF: 123.456.789-01
+DATA DE NASCIMENTO: 15/03/1985
+DATA DA COLETA: 01/02/2026
+MÉDICO SOLICITANTE: Dr. João Silva (CRM: 12345)
+
+-----------------------------------------------
+FUNÇÃO RENAL
+-----------------------------------------------
+
+Creatinina sérica: 1.2 mg/dL
+    Valor de referência: 0.7 - 1.3 mg/dL
+    Status: NORMAL
+
+Ureia: 35 mg/dL
+    Valor de referência: 15 - 45 mg/dL
+    Status: NORMAL
+
+Taxa de Filtração Glomerular (TFG): 85 mL/min/1.73m²
+    Valor de referência: > 60 mL/min/1.73m²
+    Status: NORMAL
+
+-----------------------------------------------
+OBSERVAÇÕES
+-----------------------------------------------
+Função renal dentro dos parâmetros normais.
+Manter acompanhamento regular.
+
+===============================================
+Responsável Técnico: Dra. Maria Santos
+CRBM: 98765
+Data de Emissão: 02/02/2026
+===============================================

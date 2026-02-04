@@ -1,6 +1,0 @@
-@ExamAI.Api_HostAddress = http://localhost:5076
-
-GET {{ExamAI.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

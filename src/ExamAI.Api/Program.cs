@@ -29,17 +29,10 @@ builder.Services.AddSingleton<IChatClient>(sp =>
 
     logger.LogInformation("Configuring Ollama client: {Url}, Model: {Model}", ollamaUrl, model);
 
-    try
-    {
-        var client = new OllamaChatClient(new Uri(ollamaUrl), model);
-        logger.LogInformation("Ollama client configured successfully");
-        return client;
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Failed to configure Ollama client");
-        throw;
-    }
+    // Ollama client não valida conexão no construtor - apenas cria o cliente
+    var client = new OllamaChatClient(new Uri(ollamaUrl), model);
+    logger.LogInformation("Ollama client configured successfully");
+    return client;
 });
 
 // ===================================================
@@ -78,6 +71,19 @@ builder.Services.AddScoped<DocumentHashService>();
 builder.Services.AddHttpClient();
 
 // ===================================================
+// Configure CORS
+// ===================================================
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// ===================================================
 // Configure OpenAPI/Swagger (US-020)
 // ===================================================
 builder.Services.AddEndpointsApiExplorer();
@@ -96,6 +102,9 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
     c.DocumentTitle = "ExamAI API Documentation";
 });
+
+// CORS deve vir ANTES de UseHttpsRedirection
+app.UseCors();
 
 app.UseHttpsRedirection();
 app.MapControllers();
@@ -511,7 +520,58 @@ app.MapPost("/api/exams/upload", async (
             });
         }
 
-        // Criar documento
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        // Criar ou buscar paciente
+        ExamAI.Domain.Entities.Paciente paciente;
+        
+        if (!string.IsNullOrWhiteSpace(cpf))
+        {
+            // Buscar paciente existente por CPF
+            paciente = await dbContext.Pacientes
+                .FirstOrDefaultAsync(p => p.Cpf == cpf);
+            
+            if (paciente == null)
+            {
+                // Criar novo paciente
+                paciente = new ExamAI.Domain.Entities.Paciente
+                {
+                    Id = Guid.NewGuid(),
+                    Cpf = cpf,
+                    Nome = nomePaciente ?? "Paciente Não Identificado",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                dbContext.Pacientes.Add(paciente);
+                await dbContext.SaveChangesAsync();
+                logger.LogInformation("Paciente criado: {CPF}", cpf);
+            }
+            else if (!string.IsNullOrWhiteSpace(nomePaciente) && paciente.Nome != nomePaciente)
+            {
+                // Atualizar nome se fornecido e diferente
+                paciente.Nome = nomePaciente;
+                paciente.UpdatedAt = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync();
+                logger.LogInformation("Paciente atualizado: {CPF}", cpf);
+            }
+        }
+        else
+        {
+            // Criar paciente anônimo (sem CPF)
+            paciente = new ExamAI.Domain.Entities.Paciente
+            {
+                Id = Guid.NewGuid(),
+                Nome = nomePaciente ?? "Paciente Não Identificado",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            dbContext.Pacientes.Add(paciente);
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Paciente anônimo criado");
+        }
+
+        // Criar documento associado ao paciente
         var documento = new ExamAI.Domain.Entities.Documento
         {
             Id = Guid.NewGuid(),
@@ -521,37 +581,85 @@ app.MapPost("/api/exams/upload", async (
             HashSha256 = fileHash,
             StatusProcessamento = "processing",
             DataUpload = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            PacienteId = paciente.Id // ✅ Associar ao paciente
         };
 
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
         dbContext.Documentos.Add(documento);
         await dbContext.SaveChangesAsync();
+
+        // Copiar arquivo para memória ANTES de retornar (IFormFile não estará disponível depois)
+        byte[] fileBytes;
+        using (var ms = new MemoryStream())
+        {
+            using var fileStream = file.OpenReadStream();
+            await fileStream.CopyToAsync(ms);
+            fileBytes = ms.ToArray();
+        }
+        var fileName = file.FileName;
+        var documentoId = documento.Id;
 
         // Processar em background (simplificado - em produção seria task queue)
         _ = Task.Run(async () =>
         {
             try
             {
-                using var processStream = file.OpenReadStream();
-                var result = await pipeline.ProcessAsync(processStream, file.FileName);
+                using var processStream = new MemoryStream(fileBytes);
+                using var taskScope = app.Services.CreateScope();
+                var taskPipeline = taskScope.ServiceProvider.GetRequiredService<MedicalExamPipeline>();
+                var taskRepository = taskScope.ServiceProvider.GetRequiredService<ExamRepository>();
+                var taskDbContext = taskScope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+                var taskLogger = taskScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+                var result = await taskPipeline.ProcessAsync(processStream, fileName);
                 
                 if (result.Success)
                 {
-                    await repository.SaveExamAsync(result, documento.Id);
-                    logger.LogInformation("Background processing completed for documento {Id}", documento.Id);
+                    await taskRepository.SaveExamAsync(result, documentoId);
+                    taskLogger.LogInformation("Background processing completed for documento {Id}", documentoId);
+                    
+                    // Atualizar status
+                    var doc = await taskDbContext.Documentos.FindAsync(documentoId);
+                    if (doc != null)
+                    {
+                        doc.StatusProcessamento = "completed";
+                        await taskDbContext.SaveChangesAsync();
+                    }
                 }
                 else
                 {
-                    documento.StatusProcessamento = "failed";
-                    documento.ErroProcessamento = result.ErrorMessage;
-                    await dbContext.SaveChangesAsync();
+                    taskLogger.LogError("Processing failed for documento {Id}: {Error}", documentoId, result.ErrorMessage);
+                    
+                    var doc = await taskDbContext.Documentos.FindAsync(documentoId);
+                    if (doc != null)
+                    {
+                        doc.StatusProcessamento = "failed";
+                        doc.ErroProcessamento = result.ErrorMessage;
+                        await taskDbContext.SaveChangesAsync();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Background processing failed for documento {Id}", documento.Id);
+                logger.LogError(ex, "Background processing failed for documento {Id}", documentoId);
+                
+                try
+                {
+                    using var errorScope = app.Services.CreateScope();
+                    var errorDbContext = errorScope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+                    var doc = await errorDbContext.Documentos.FindAsync(documentoId);
+                    if (doc != null)
+                    {
+                        doc.StatusProcessamento = "failed";
+                        doc.ErroProcessamento = ex.Message;
+                        await errorDbContext.SaveChangesAsync();
+                    }
+                }
+                catch
+                {
+                    // Se falhar ao atualizar status, apenas logar
+                    logger.LogError("Failed to update document status for {Id}", documentoId);
+                }
             }
         });
 
@@ -578,15 +686,23 @@ app.MapPost("/api/exams/upload", async (
 // Endpoint completo: processar + salvar no banco (com detecção de duplicatas)
 app.MapPost("/api/process-and-save", async (
     IFormFile file,
+    string? cpf,
+    string? nomePaciente,
     MedicalExamPipeline pipeline,
     ExamRepository repository,
     DocumentHashService hashService,
+    ValidationAgent validationAgent,
     ILogger<Program> logger) =>
 {
     try
     {
         logger.LogInformation("Processing and saving exam: {FileName} ({Size} bytes)", 
             file.FileName, file.Length);
+
+        if (!string.IsNullOrWhiteSpace(cpf) && !validationAgent.IsValidCpf(cpf))
+        {
+            return Results.BadRequest(new { success = false, error = "Invalid CPF format" });
+        }
 
         // 1. Calcular hash SHA256 do arquivo
         using var hashStream = file.OpenReadStream();
@@ -625,7 +741,50 @@ app.MapPost("/api/process-and-save", async (
             });
         }
 
-        // 3. Criar documento no banco
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        // 3. Criar ou buscar paciente
+        ExamAI.Domain.Entities.Paciente paciente;
+        
+        if (!string.IsNullOrWhiteSpace(cpf))
+        {
+            paciente = await dbContext.Pacientes.FirstOrDefaultAsync(p => p.Cpf == cpf);
+            
+            if (paciente == null)
+            {
+                paciente = new ExamAI.Domain.Entities.Paciente
+                {
+                    Id = Guid.NewGuid(),
+                    Cpf = cpf,
+                    Nome = nomePaciente ?? "Paciente Não Identificado",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                dbContext.Pacientes.Add(paciente);
+                await dbContext.SaveChangesAsync();
+            }
+            else if (!string.IsNullOrWhiteSpace(nomePaciente) && paciente.Nome != nomePaciente)
+            {
+                paciente.Nome = nomePaciente;
+                paciente.UpdatedAt = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync();
+            }
+        }
+        else
+        {
+            paciente = new ExamAI.Domain.Entities.Paciente
+            {
+                Id = Guid.NewGuid(),
+                Nome = nomePaciente ?? "Paciente Não Identificado",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            dbContext.Pacientes.Add(paciente);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // 4. Criar documento no banco
         var documento = new ExamAI.Domain.Entities.Documento
         {
             Id = Guid.NewGuid(),
@@ -635,17 +794,16 @@ app.MapPost("/api/process-and-save", async (
             HashSha256 = fileHash,
             StatusProcessamento = "processing",
             DataUpload = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            PacienteId = paciente.Id
         };
 
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
         dbContext.Documentos.Add(documento);
         await dbContext.SaveChangesAsync();
 
         logger.LogInformation("Created documento ID: {DocumentoId}", documento.Id);
 
-        // 4. Processar documento
+        // 5. Processar documento
         using var stream = file.OpenReadStream();
         var result = await pipeline.ProcessAsync(stream, file.FileName);
 
@@ -664,7 +822,7 @@ app.MapPost("/api/process-and-save", async (
             }, statusCode: 500);
         }
 
-        // 5. Salvar resultado no banco
+        // 6. Salvar resultado no banco
         var pacienteId = await repository.SaveExamAsync(result, documento.Id);
 
         logger.LogInformation("Saved exam result for paciente ID: {PacienteId}", pacienteId);
@@ -1012,5 +1170,117 @@ app.MapPost("/test/extract-from-text", async (
 })
 .WithName("TestExtractionFromText")
 .WithTags("Testing");
+
+// ===================================================
+// Reprocessar Documento Falhado
+// ===================================================
+app.MapPost("/api/exams/reprocess/{documentoId}", async (
+    Guid documentoId,
+    MedicalExamPipeline pipeline,
+    ExamRepository repository,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Reprocessing documento: {DocumentoId}", documentoId);
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        // Buscar documento
+        var documento = await dbContext.Documentos
+            .Include(d => d.Paciente)
+            .FirstOrDefaultAsync(d => d.Id == documentoId);
+
+        if (documento == null)
+        {
+            return Results.NotFound(new { success = false, error = "Document not found" });
+        }
+
+        logger.LogInformation("Found documento: {FileName}, Current status: {Status}", 
+            documento.NomeArquivo, documento.StatusProcessamento);
+
+        // Atualizar status para processing
+        documento.StatusProcessamento = "processing";
+        documento.ErroProcessamento = null;
+        await dbContext.SaveChangesAsync();
+
+        // Nota: Como não temos o arquivo original em disco, 
+        // não podemos reprocessar completamente
+        // Esta é uma limitação - precisaria armazenar o arquivo em disco ou blob storage
+
+        return Results.Ok(new
+        {
+            success = false,
+            error = "Cannot reprocess: original file not stored. Please re-upload the document.",
+            documentoId = documento.Id,
+            fileName = documento.NomeArquivo,
+            suggestion = "Use DELETE /api/exams/{documentoId} to remove failed document, then upload again"
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error reprocessing documento: {DocumentoId}", documentoId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("ReprocessDocument")
+.WithTags("Exams");
+
+// ===================================================
+// Deletar Documento Falhado
+// ===================================================
+app.MapDelete("/api/exams/{documentoId}", async (
+    Guid documentoId,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Deleting documento: {DocumentoId}", documentoId);
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        var documento = await dbContext.Documentos
+            .Include(d => d.Exames)
+                .ThenInclude(e => e.Resultados)
+            .FirstOrDefaultAsync(d => d.Id == documentoId);
+
+        if (documento == null)
+        {
+            return Results.NotFound(new { success = false, error = "Document not found" });
+        }
+
+        // Deletar em cascata (devido ao relacionamento configurado)
+        dbContext.Documentos.Remove(documento);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Deleted documento: {DocumentoId}, File: {FileName}", 
+            documentoId, documento.NomeArquivo);
+
+        return Results.Ok(new
+        {
+            success = true,
+            message = "Document deleted successfully",
+            documentoId = documentoId,
+            fileName = documento.NomeArquivo
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error deleting documento: {DocumentoId}", documentoId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("DeleteDocument")
+.WithTags("Exams");
 
 app.Run();

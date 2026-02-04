@@ -75,18 +75,19 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.Nome).IsUnique();
             entity.HasIndex(e => e.Categoria);
 
-            // Seed data
+            // Seed data - Usar data fixa para evitar problemas com migrations
+            var seedDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
             entity.HasData(
-                new TipoExame { Id = 1, Nome = "Hemograma Completo", Categoria = "Hematologia", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 2, Nome = "Glicemia", Categoria = "Bioquímica", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 3, Nome = "Colesterol Total", Categoria = "Lipidograma", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 4, Nome = "HDL", Categoria = "Lipidograma", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 5, Nome = "LDL", Categoria = "Lipidograma", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 6, Nome = "Triglicerídeos", Categoria = "Lipidograma", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 7, Nome = "Ureia", Categoria = "Função Renal", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 8, Nome = "Creatinina", Categoria = "Função Renal", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 9, Nome = "TGO/AST", Categoria = "Função Hepática", CreatedAt = DateTime.UtcNow },
-                new TipoExame { Id = 10, Nome = "TGP/ALT", Categoria = "Função Hepática", CreatedAt = DateTime.UtcNow }
+                new TipoExame { Id = 1, Nome = "Hemograma Completo", Categoria = "Hematologia", CreatedAt = seedDate },
+                new TipoExame { Id = 2, Nome = "Glicemia", Categoria = "Bioquímica", CreatedAt = seedDate },
+                new TipoExame { Id = 3, Nome = "Colesterol Total", Categoria = "Lipidograma", CreatedAt = seedDate },
+                new TipoExame { Id = 4, Nome = "HDL", Categoria = "Lipidograma", CreatedAt = seedDate },
+                new TipoExame { Id = 5, Nome = "LDL", Categoria = "Lipidograma", CreatedAt = seedDate },
+                new TipoExame { Id = 6, Nome = "Triglicerídeos", Categoria = "Lipidograma", CreatedAt = seedDate },
+                new TipoExame { Id = 7, Nome = "Ureia", Categoria = "Função Renal", CreatedAt = seedDate },
+                new TipoExame { Id = 8, Nome = "Creatinina", Categoria = "Função Renal", CreatedAt = seedDate },
+                new TipoExame { Id = 9, Nome = "TGO/AST", Categoria = "Função Hepática", CreatedAt = seedDate },
+                new TipoExame { Id = 10, Nome = "TGP/ALT", Categoria = "Função Hepática", CreatedAt = seedDate }
             );
         });
 

@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using ExamAI.Application.DTOs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ExamAI.Application.Agents;
@@ -13,16 +14,22 @@ public class ExtractionAgent
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ExtractionAgent> _logger;
+    private readonly string _ollamaUrl;
+    private readonly string _model;
     private const int MaxRetries = 1;
-    private const string OllamaUrl = "http://localhost:11434";
-    private const string Model = "llama3.1:70b";
 
     public ExtractionAgent(
         IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
         ILogger<ExtractionAgent> logger)
     {
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        _ollamaUrl = configuration["Ollama:Url"] ?? "http://localhost:11434";
+        _model = configuration["Ollama:Model"] ?? "Llama3.1:latest";
+        
+        _logger.LogInformation("ExtractionAgent configured with Ollama URL: {Url}, Model: {Model}", _ollamaUrl, _model);
     }
 
     /// <summary>
@@ -55,7 +62,7 @@ public class ExtractionAgent
                 
                 var ollamaRequest = new
                 {
-                    model = Model,
+                    model = _model,
                     prompt = $"{systemPrompt}\n\n{userPrompt}",
                     stream = false,
                     options = new
@@ -66,7 +73,7 @@ public class ExtractionAgent
                 };
 
                 var response = await httpClient.PostAsJsonAsync(
-                    $"{OllamaUrl}/api/generate",
+                    $"{_ollamaUrl}/api/generate",
                     ollamaRequest,
                     cancellationToken);
 

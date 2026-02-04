@@ -307,8 +307,11 @@ public class ExamRepository
         };
 
         _context.TiposExame.Add(novoTipo);
+        
+        // Salvar IMEDIATAMENTE para garantir que o ID existe antes de criar Exame
+        await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogDebug("Created new tipo_exame: {Nome}", nomeExame);
+        _logger.LogDebug("Created new tipo_exame: {Nome} with ID: {Id}", nomeExame, novoTipo.Id);
 
         return novoTipo;
     }
