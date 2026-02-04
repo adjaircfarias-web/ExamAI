@@ -13,6 +13,8 @@ API para extração automática e inteligente de dados de exames médicos usando
 > 📖 **Primeira vez?** Veja o [QUICK-START.md](QUICK-START.md) - Guia completo em 5 minutos!
 > 
 > 📤 **Testar upload?** Veja o [UPLOAD-TEST.md](UPLOAD-TEST.md) - Guia de teste passo a passo!
+>
+> ♻️ **Documento falhou?** Veja o [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md) - Como deletar e reprocessar
 
 ---
 

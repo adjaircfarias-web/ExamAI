@@ -125,6 +125,14 @@ info: Program[0]
 
 ## ❌ Troubleshooting
 
+### "Document already processed" mas status "failed"
+- **Causa:** Documento falhou no primeiro processamento (ex: Ollama offline)
+- **Detecção de duplicata:** Sistema detecta hash e bloqueia novo upload
+- **Solução:** 
+  1. Deletar documento falhado: `DELETE /api/exams/{documentoId}`
+  2. Fazer upload novamente
+- **📖 Guia completo:** [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)
+
 ### "Failed to fetch"
 - **Causa:** CORS não ativado ou API não rodando
 - **Solução:** Verificar se `app.UseCors()` está descomentado em Program.cs

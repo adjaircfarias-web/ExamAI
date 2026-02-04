@@ -1,5 +1,92 @@
 # Changelog - ExamAI
 
+## [1.3.0] - 2026-02-04
+
+### 🔧 Correção CRÍTICA: ExtractionAgent usando configuração hardcoded
+
+**Problema resolvido:** ExtractionAgent estava usando valores hardcoded em vez de ler appsettings.json
+
+#### O que foi corrigido:
+- ✅ `ExtractionAgent.cs` - Injeção de `IConfiguration`
+- ✅ Constantes removidas: `OllamaUrl`, `Model`
+- ✅ Valores agora lidos do appsettings.json
+- ✅ Log de configuração adicionado no construtor
+
+#### Erro anterior:
+```csharp
+// ANTES (hardcoded - ERRADO)
+private const string OllamaUrl = "http://localhost:11434";
+private const string Model = "llama3.1:70b";  // Modelo não existente!
+```
+
+#### Solução:
+```csharp
+// DEPOIS (lê de appsettings.json - CORRETO)
+public ExtractionAgent(
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration,  // ✅ Injetado
+    ILogger<ExtractionAgent> logger)
+{
+    _ollamaUrl = configuration["Ollama:Url"] ?? "http://localhost:11434";
+    _model = configuration["Ollama:Model"] ?? "Llama3.1:latest";
+    
+    _logger.LogInformation("ExtractionAgent configured with Ollama URL: {Url}, Model: {Model}", 
+        _ollamaUrl, _model);
+}
+```
+
+#### Teste de sucesso:
+```bash
+POST /test/extract-from-text
+Body: [texto de exame médico]
+
+Log:
+✅ ExtractionAgent configured with Ollama URL: http://localhost:11434, Model: Llama3.1:latest
+✅ Received HTTP response headers after 51222ms - 200
+✅ Extraction successful: 3 exames found, patient: Ricardo Costa
+
+Resultado:
+{
+  "success": true,
+  "structuredData": {
+    "paciente": { "nome": "Ricardo Costa" },
+    "exames": [
+      { "tipo": "Creatinina sérica", "valor": 1.2, "status": "normal" },
+      { "tipo": "Ureia", "valor": 35, "status": "normal" },
+      { "tipo": "TFG", "valor": 85, "status": "normal" }
+    ]
+  }
+}
+```
+
+**Agora o processamento funciona completamente!** 🎉
+
+---
+
+## [1.2.9] - 2026-02-04
+
+### ✨ Novo: Endpoints para gerenciar documentos falhados
+
+**Adicionados:**
+- `DELETE /api/exams/{documentoId}` - Deletar documento (com cascata)
+- `POST /api/exams/reprocess/{documentoId}` - (Nota: limitação conhecida)
+
+**Por que?**
+Quando um documento falha no processamento (ex: Ollama offline), ele fica marcado como "failed" e bloqueia novos uploads do mesmo arquivo (detecção de duplicata por hash).
+
+**Solução:**
+1. Deletar documento falhado: `DELETE /api/exams/{documentoId}`
+2. Fazer upload novamente
+
+**Limitação conhecida:**
+Arquivos não são armazenados em disco/blob storage, apenas metadados no banco. Por isso não é possível reprocessar sem re-upload.
+
+**Endpoints atualizados:**
+- Swagger agora mostra DELETE endpoint
+- Cascata automática: deleta documento + exames + resultados
+
+---
+
 ## [1.2.8] - 2026-02-04
 
 ### 🔧 Correção: Ollama Model 404 Not Found

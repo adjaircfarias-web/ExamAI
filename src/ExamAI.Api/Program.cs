@@ -1171,4 +1171,116 @@ app.MapPost("/test/extract-from-text", async (
 .WithName("TestExtractionFromText")
 .WithTags("Testing");
 
+// ===================================================
+// Reprocessar Documento Falhado
+// ===================================================
+app.MapPost("/api/exams/reprocess/{documentoId}", async (
+    Guid documentoId,
+    MedicalExamPipeline pipeline,
+    ExamRepository repository,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Reprocessing documento: {DocumentoId}", documentoId);
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        // Buscar documento
+        var documento = await dbContext.Documentos
+            .Include(d => d.Paciente)
+            .FirstOrDefaultAsync(d => d.Id == documentoId);
+
+        if (documento == null)
+        {
+            return Results.NotFound(new { success = false, error = "Document not found" });
+        }
+
+        logger.LogInformation("Found documento: {FileName}, Current status: {Status}", 
+            documento.NomeArquivo, documento.StatusProcessamento);
+
+        // Atualizar status para processing
+        documento.StatusProcessamento = "processing";
+        documento.ErroProcessamento = null;
+        await dbContext.SaveChangesAsync();
+
+        // Nota: Como não temos o arquivo original em disco, 
+        // não podemos reprocessar completamente
+        // Esta é uma limitação - precisaria armazenar o arquivo em disco ou blob storage
+
+        return Results.Ok(new
+        {
+            success = false,
+            error = "Cannot reprocess: original file not stored. Please re-upload the document.",
+            documentoId = documento.Id,
+            fileName = documento.NomeArquivo,
+            suggestion = "Use DELETE /api/exams/{documentoId} to remove failed document, then upload again"
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error reprocessing documento: {DocumentoId}", documentoId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("ReprocessDocument")
+.WithTags("Exams");
+
+// ===================================================
+// Deletar Documento Falhado
+// ===================================================
+app.MapDelete("/api/exams/{documentoId}", async (
+    Guid documentoId,
+    ILogger<Program> logger) =>
+{
+    try
+    {
+        logger.LogInformation("Deleting documento: {DocumentoId}", documentoId);
+
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
+
+        var documento = await dbContext.Documentos
+            .Include(d => d.Exames)
+                .ThenInclude(e => e.Resultados)
+            .FirstOrDefaultAsync(d => d.Id == documentoId);
+
+        if (documento == null)
+        {
+            return Results.NotFound(new { success = false, error = "Document not found" });
+        }
+
+        // Deletar em cascata (devido ao relacionamento configurado)
+        dbContext.Documentos.Remove(documento);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Deleted documento: {DocumentoId}, File: {FileName}", 
+            documentoId, documento.NomeArquivo);
+
+        return Results.Ok(new
+        {
+            success = true,
+            message = "Document deleted successfully",
+            documentoId = documentoId,
+            fileName = documento.NomeArquivo
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error deleting documento: {DocumentoId}", documentoId);
+        return Results.Json(new
+        {
+            success = false,
+            error = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("DeleteDocument")
+.WithTags("Exams");
+
 app.Run();
