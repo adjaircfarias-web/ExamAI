@@ -1,47 +1,47 @@
 # 🏥 ExamAI - Medical Exam Extractor API
 
-**Status:** ✅ **MVP 100% COMPLETO E FUNCIONAL**  
-**Versão:** 1.0  
-**Data:** 04/02/2026
+**Status:** ✅ **MVP 100% COMPLETE AND FUNCTIONAL**  
+**Version:** 1.3.0  
+**Date:** February, 2026
 
-API para extração automática e inteligente de dados de exames médicos usando IA local (Ollama) + PostgreSQL.
+API for automatic and intelligent extraction of medical exam data using local AI (Ollama) + PostgreSQL.
 
 ---
 
 ## ⚡ Quick Start
 
-> 📖 **Primeira vez?** Veja o [QUICK-START.md](QUICK-START.md) - Guia completo em 5 minutos!
+> 📖 **First time?** See [QUICK-START.md](QUICK-START.md) - Complete guide in 5 minutes!
 > 
-> 📤 **Testar upload?** Veja o [UPLOAD-TEST.md](UPLOAD-TEST.md) - Guia de teste passo a passo!
+> 📤 **Test upload?** See [UPLOAD-TEST.md](UPLOAD-TEST.md) - Step-by-step testing guide!
 >
-> ♻️ **Documento falhou?** Veja o [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md) - Como deletar e reprocessar
+> ♻️ **Document failed?** See [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md) - How to delete and reprocess
 
 ---
 
-### Opção 1: Docker Compose (Recomendado) 🐳
+### Option 1: Docker Compose (Recommended) 🐳
 
 ```bash
-# 1. Subir PostgreSQL + pgAdmin
+# 1. Start PostgreSQL + pgAdmin
 docker-compose up -d
 
-# 2. Aplicar migrations
+# 2. Apply migrations
 cd src/ExamAI.Api
 dotnet ef database update
 
-# 3. Iniciar Ollama (se já instalado)
+# 3. Start Ollama (if already installed)
 ollama pull llama3.1:70b
 
-# 4. Rodar API
+# 4. Run API
 dotnet run
 
-# 5. Acessar Swagger
+# 5. Access Swagger
 # http://localhost:5076/swagger
 ```
 
-### Opção 2: Docker Manual
+### Option 2: Manual Docker
 
 ```bash
-# 1. Iniciar PostgreSQL
+# 1. Start PostgreSQL
 docker run --name examai-postgres \
   -e POSTGRES_PASSWORD=postgres123 \
   -e POSTGRES_DB=examai \
@@ -49,201 +49,215 @@ docker run --name examai-postgres \
   -v examai_data:/var/lib/postgresql/data \
   -d postgres:16-alpine
 
-# 2-5. Seguir os mesmos passos acima
+# 2-5. Follow the same steps above
 ```
 
-### Opção 3: Usando Makefile (Alternativo)
+### Option 3: Using Makefile (Alternative)
 
 ```bash
-# Setup completo
+# Complete setup
 make setup
 
-# Rodar API
+# Run API
 make run
 
-# Ver comandos disponíveis
+# See available commands
 make help
 ```
 
-### Opção 4: PostgreSQL Local
+### Option 4: Local PostgreSQL
 
-Se você já tem PostgreSQL instalado localmente, apenas crie o banco:
+If you already have PostgreSQL installed locally, just create the database:
 ```sql
 CREATE DATABASE examai;
 ```
 
 ---
 
-## 🚀 Funcionalidades Completas
+## 🚀 Complete Features
 
-### ✅ Processamento End-to-End
-- **Upload** de documentos (PDF, Word, Excel)
-- **Extração** de texto automatizada (3 parsers especializados)
-- **Análise** com IA (Ollama LLM - llama3.1:8b)
-- **Validação** de dados (15+ regras de consistência)
-- **Normalização** (30+ mapeamentos de nomenclatura)
-- **Persistência** no PostgreSQL com transações ACID
+### ✅ End-to-End Processing
+- **Upload** documents (PDF, Word, Excel)
+- **Extraction** automated text extraction (3 specialized parsers)
+- **Analysis** with AI (Ollama LLM - llama3.1:70b)
+- **Validation** data validation (15+ consistency rules)
+- **Normalization** (30+ nomenclature mappings)
+- **Persistence** in PostgreSQL with ACID transactions
 
-### ✅ API REST Completa (10 Endpoints)
+### ✅ Complete REST API (7 Production Endpoints)
 
-#### Produção
-- **POST** `/api/exams/upload` - Upload com validações (202 Accepted)
-- **GET** `/api/exams/status/{id}` - Status de processamento
-- **GET** `/api/exams/paciente/{cpf}` - Buscar exames por CPF
-- **GET** `/api/exams/{id}` - Buscar exame específico
-- **POST** `/api/process-and-save` - Processar e salvar (síncrono)
+#### Production
+- **POST** `/api/process-and-save` - Process and save exam (synchronous)
+- **GET** `/api/exams/paciente/{cpf}` - Search exams by CPF (Brazilian ID)
+- **POST** `/api/exams/reprocess/{documentoId}` - Reprocess failed document
+- **DELETE** `/api/exams/{documentoId}` - Delete document
 
 #### Health & Docs
-- **GET** `/health` - Health check geral
-- **GET** `/health/ollama` - Status do Ollama
-- **GET** `/health/database` - Status do PostgreSQL
-- **GET** `/swagger` - Documentação interativa Swagger UI
+- **GET** `/health` - General health check
+- **GET** `/health/ollama` - Ollama status
+- **GET** `/health/database` - PostgreSQL status
+- **GET** `/swagger` - Interactive Swagger UI documentation
 
-#### Desenvolvimento
-- POST `/test/*` - Endpoints de teste
-
-### ✅ Detecção de Duplicatas
-- **Hash SHA256** de todos os documentos
-- **Retorno instantâneo** para duplicatas (< 100ms)
-- **Economia** de processamento LLM e recursos
+### ✅ Duplicate Detection
+- **SHA256 Hash** for all documents
+- **Instant return** for duplicates (< 100ms)
+- **Saves** LLM processing and resources
 
 ---
 
-## 📊 Arquitetura do Sistema
+## 📊 System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  FLUXO COMPLETO                      │
+│                  COMPLETE FLOW                       │
 └─────────────────────────────────────────────────────┘
 
-1. Upload → Validações → SHA256
-2. Duplicata? → SIM: Cache | NÃO: Continua
+1. Upload → Validations → SHA256
+2. Duplicate? → YES: Cache | NO: Continue
 3. Parse (PDF/Word/Excel)
 4. Extract (Ollama LLM)
-5. Validate (15+ regras)
-6. Normalize (30+ mapeamentos)
-7. Save (PostgreSQL + Transação)
+5. Validate (15+ rules)
+6. Normalize (30+ mappings)
+7. Save (PostgreSQL + Transaction)
 8. Query (GET endpoints)
 ```
 
-### Estrutura do Projeto
+### Project Structure
 
 ```
 ExamAI/
 ├── src/
 │   ├── ExamAI.Api/              # REST API + Swagger
 │   ├── ExamAI.Application/      # Agents + Pipeline + DTOs
-│   ├── ExamAI.Domain/           # Entidades + Interfaces
+│   ├── ExamAI.Domain/           # Entities + Interfaces
 │   └── ExamAI.Infrastructure/   # Parsers + Repository + Services
-├── docker/                      # 🐳 Configurações Docker
+├── docker/                      # 🐳 Docker configurations
 │   ├── postgres/
-│   │   ├── Dockerfile           # Imagem PostgreSQL customizada
-│   │   └── init/                # Scripts de inicialização
-│   └── README.md                # Documentação Docker
-├── docs/                        # Documentação completa
-│   ├── PROJECT-COMPLETE.md      # 📖 Visão geral completa
-│   ├── PROGRESS.md              # Histórico de desenvolvimento
-│   ├── PARSERS.md               # Documentação dos parsers
-│   └── SPRINT-*-SUMMARY.md      # Resumos das sprints
-├── docker-compose.yml           # 🐳 Orquestração (PostgreSQL + pgAdmin)
-├── .env.example                 # Exemplo de variáveis de ambiente
-├── .dockerignore                # Arquivos ignorados no build Docker
-└── Plan/                        # Especificação original
+│   │   ├── Dockerfile           # Custom PostgreSQL image
+│   │   └── init/                # Initialization scripts
+│   └── README.md                # Docker documentation
+├── docs/                        # Complete documentation
+│   ├── PROJECT-COMPLETE.md      # 📖 Complete overview
+│   ├── PROGRESS.md              # Development history
+│   ├── PARSERS.md               # Parser documentation
+│   └── SPRINT-*-SUMMARY.md      # Sprint summaries
+├── docker-compose.yml           # 🐳 Orchestration (PostgreSQL + pgAdmin)
+├── .env.example                 # Environment variables example
+├── .dockerignore                # Files ignored in Docker build
+└── Plan/                        # Original specification
 ```
 
 ---
 
-## 🔧 Tecnologias e Bibliotecas
+## 🔧 Technologies and Libraries
 
 ### Backend
-- **.NET 10.0** - Framework principal
-- **C#** - Linguagem
+- **.NET 10.0** - Main framework
+- **C#** - Programming language
 - **Entity Framework Core 10** - ORM
-- **PostgreSQL 16** - Banco de dados
-- **Ollama** - LLM local (llama3.1:70b) 🚀
+- **PostgreSQL 16** - Database
+- **Ollama** - Local LLM (llama3.1:70b) 🚀
 
-### Bibliotecas Principais
-- **iText7** (9.5.0) - Parser de PDF
-- **DocumentFormat.OpenXml** (3.4.1) - Parser de Word
-- **EPPlus** (8.4.1) - Parser de Excel
-- **Microsoft.Extensions.AI** (10.2.0) - Client LLM
+### Main Libraries
+- **iText7** (9.5.0) - PDF parser
+- **DocumentFormat.OpenXml** (3.4.1) - Word parser
+- **EPPlus** (8.4.1) - Excel parser
+- **Microsoft.Extensions.AI** (10.2.0) - LLM client
 - **Swashbuckle.AspNetCore** (10.1.1) - Swagger/OpenAPI
 
-### Ferramentas
-- **SHA256** - Hash e detecção de duplicatas
-- **Transactions** - Atomicidade de dados
-- **Dependency Injection** - Inversão de controle
+### Tools
+- **SHA256** - Hash and duplicate detection
+- **Transactions** - Data atomicity
+- **Dependency Injection** - Inversion of control
 - **Structured Logging** - Microsoft.Extensions.Logging
 
 ---
 
-## 📖 Documentação Completa
+## 📖 Complete Documentation
 
-### Guias de Setup
-1. **[QUICK-START.md](QUICK-START.md)** - ⚡ Setup em 5 minutos
-2. **[docker/README.md](docker/README.md)** - 🐳 Documentação Docker completa
-3. **[scripts/README.md](scripts/README.md)** - 🛠️ Scripts utilitários
-4. **[TEST-GUIDE.md](TEST-GUIDE.md)** - 🧪 Como testar o sistema
-5. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - 🔧 Soluções para problemas comuns
+### Setup Guides
+1. **[QUICK-START.md](QUICK-START.md)** - ⚡ 5-minute setup
+2. **[docker/README.md](docker/README.md)** - 🐳 Complete Docker documentation
+3. **[scripts/README.md](scripts/README.md)** - 🛠️ Utility scripts
+4. **[TEST-GUIDE.md](TEST-GUIDE.md)** - 🧪 How to test the system
+5. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - 🔧 Solutions for common issues
 
-### Documentação Técnica
-4. **[PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md)** - 📖 Visão geral completa do MVP
-5. **[PROGRESS.md](docs/PROGRESS.md)** - Histórico de todas as 20 USs
-6. **[PARSERS.md](docs/PARSERS.md)** - Documentação dos parsers
-7. **[SPRINT-*-SUMMARY.md](docs/)** - Resumos detalhados de cada sprint
-8. **[CHANGELOG.md](CHANGELOG.md)** - Histórico de versões
+### Technical Documentation
+6. **[PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md)** - 📖 Complete MVP overview
+7. **[PROGRESS.md](docs/PROGRESS.md)** - History of all 20 User Stories
+8. **[PARSERS.md](docs/PARSERS.md)** - Parser documentation
+9. **[SPRINT-*-SUMMARY.md](docs/)** - Detailed sprint summaries
+10. **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
-### Documentação Interativa
-9. **[Swagger UI](http://localhost:5076/swagger)** - Documentação da API
-
----
-
-## 🎯 Exemplos de Uso
-
-### 1. Upload de Exame
-
-```bash
-curl -X POST http://localhost:5076/api/exams/upload \
-  -F "file=@exame-sangue.pdf" \
-  -F "cpf=12345678900" \
-  -F "nomePaciente=João Silva"
-```
-
-**Response (202 Accepted):**
-```json
-{
-  "success": true,
-  "documentoId": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "processing",
-  "message": "Document accepted for processing",
-  "statusUrl": "/api/exams/status/550e8400-..."
-}
-```
+### Interactive Documentation
+11. **[Swagger UI](http://localhost:5076/swagger)** - API documentation
 
 ---
 
-### 2. Consultar Status
+## 🎯 Usage Examples
+
+### 1. Upload and Process Exam
 
 ```bash
-curl http://localhost:5076/api/exams/status/550e8400-e29b-41d4-a716-446655440000
+curl -X POST http://localhost:5076/api/process-and-save \
+  -F "file=@blood-test.pdf"
 ```
 
 **Response (200 OK):**
 ```json
 {
   "success": true,
-  "documentoId": "550e8400-...",
-  "status": "completed",
-  "fileName": "exame-sangue.pdf",
-  "uploadedAt": "2026-02-04T01:00:00Z",
-  "examesExtraidos": 5,
-  "erros": []
+  "duplicate": false,
+  "documentoId": "550e8400-e29b-41d4-a716-446655440000",
+  "pacienteId": "660e8400-e29b-41d4-a716-446655440001",
+  "fileName": "blood-test.pdf",
+  "fileHash": "a3f5b8c9d2e1...",
+  "data": {
+    "paciente": {
+      "nome": "John Doe",
+      "dataNascimento": "1985-03-20",
+      "dataColeta": "2026-02-03",
+      "medicoSolicitante": "Dr. Maria Santos"
+    },
+    "exames": [
+      {
+        "tipo": "Total Cholesterol",
+        "valor": 210.0,
+        "unidade": "mg/dL",
+        "referenciaMin": 0.0,
+        "referenciaMax": 200.0,
+        "status": "high"
+      },
+      {
+        "tipo": "HDL",
+        "valor": 45.0,
+        "unidade": "mg/dL",
+        "referenciaMin": 40.0,
+        "referenciaMax": null,
+        "status": "normal"
+      }
+    ]
+  },
+  "validation": {
+    "isValid": true,
+    "warningCount": 0,
+    "warnings": []
+  },
+  "stats": {
+    "duration": 3521.45,
+    "examesExtracted": 5,
+    "validationWarnings": 0
+  }
 }
 ```
 
+**Note:** If the patient is not identified in the document, the system will create a patient with:
+- `nome`: "Paciente não identificado" (Patient not identified)
+- `cpf`: null
+
 ---
 
-### 3. Buscar Resultados por CPF
+### 2. Search Results by CPF
 
 ```bash
 curl "http://localhost:5076/api/exams/paciente/12345678900?dataInicio=2026-01-01&dataFim=2026-12-31"
@@ -255,25 +269,25 @@ curl "http://localhost:5076/api/exams/paciente/12345678900?dataInicio=2026-01-01
   "success": true,
   "paciente": {
     "id": "660e8400-...",
-    "nome": "João Silva",
+    "nome": "John Doe",
     "cpf": "12345678900",
     "dataNascimento": "1980-05-15"
   },
   "exames": [
     {
       "id": "770e8400-...",
-      "tipo": "Lipidograma",
-      "categoria": "Sangue",
+      "tipo": "Lipid Panel",
+      "categoria": "Blood",
       "dataColeta": "2026-02-03",
-      "medicoSolicitante": "Dra. Maria Santos",
+      "medicoSolicitante": "Dr. Maria Santos",
       "resultados": [
         {
-          "parametro": "Colesterol Total",
+          "parametro": "Total Cholesterol",
           "valor": 210,
           "unidade": "mg/dL",
           "referenciaMin": 0,
           "referenciaMax": 200,
-          "status": "alto"
+          "status": "high"
         },
         {
           "parametro": "HDL",
@@ -292,61 +306,90 @@ curl "http://localhost:5076/api/exams/paciente/12345678900?dataInicio=2026-01-01
 
 ---
 
-### 4. Upload Duplicado (Cache)
+### 3. Duplicate Upload (Cache)
 
 ```bash
-# Upload do mesmo arquivo novamente
-curl -X POST http://localhost:5076/api/exams/upload \
-  -F "file=@exame-sangue.pdf"
+# Upload the same file again
+curl -X POST http://localhost:5076/api/process-and-save \
+  -F "file=@blood-test.pdf"
 ```
 
-**Response (200 OK - INSTANTÂNEO < 100ms):**
+**Response (200 OK - INSTANT < 100ms):**
 ```json
 {
   "success": true,
   "duplicate": true,
   "documentoId": "550e8400-...",
+  "pacienteId": "660e8400-...",
+  "fileName": "blood-test.pdf",
+  "message": "Document already processed. Returning cached result.",
   "status": "completed",
-  "message": "Document already processed"
+  "processedAt": "2026-02-04T01:00:00Z",
+  "exames": [
+    {
+      "id": "770e8400-...",
+      "tipo": "Lipid Panel",
+      "dataColeta": "2026-02-03",
+      "resultadosCount": 5
+    }
+  ]
 }
 ```
 
 ---
 
-## 🏆 Status do Projeto
+### 4. Delete Failed Document
 
-| Sprint | Descrição | Status | USs |
-|--------|-----------|--------|-----|
-| 1 | **Setup** (PostgreSQL, Ollama, EF Core) | ✅ Completa | 4/4 |
-| 2 | **Parsing** (PDF, Word, Excel) | ✅ Completa | 4/4 |
-| 3 | **Extração IA** (LLM + Pipeline) | ✅ Completa | 4/4 |
-| 4 | **Persistência** (Banco + Hash) | ✅ Completa | 2/2 |
-| 5 | **API REST** (Endpoints + Swagger) | ✅ Completa | 6/6 |
-| **TOTAL MVP** | | **✅ 100%** | **20/20** |
+```bash
+curl -X DELETE http://localhost:5076/api/exams/550e8400-e29b-41d4-a716-446655440000
+```
 
-### 📊 Métricas Finais
-
-- **US Completas:** 20 / 23 (87%)
-- **Sprints Completas:** 5 / 5 (MVP 100%)
-- **Build Status:** ✅ 0 errors, 3 warnings
-- **Endpoints:** 10 produção + 5 teste
-- **Linhas de Código:** ~3000
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Document deleted successfully",
+  "documentoId": "550e8400-...",
+  "fileName": "blood-test.pdf"
+}
+```
 
 ---
 
-## 💾 Banco de Dados
+## 🏆 Project Status
 
-### Tabelas Criadas
+| Sprint | Description | Status | USs |
+|--------|-------------|--------|-----|
+| 1 | **Setup** (PostgreSQL, Ollama, EF Core) | ✅ Complete | 4/4 |
+| 2 | **Parsing** (PDF, Word, Excel) | ✅ Complete | 4/4 |
+| 3 | **AI Extraction** (LLM + Pipeline) | ✅ Complete | 4/4 |
+| 4 | **Persistence** (Database + Hash) | ✅ Complete | 2/2 |
+| 5 | **REST API** (Endpoints + Swagger) | ✅ Complete | 6/6 |
+| **MVP TOTAL** | | **✅ 100%** | **20/20** |
+
+### 📊 Final Metrics
+
+- **Completed USs:** 20 / 23 (87%)
+- **Completed Sprints:** 5 / 5 (MVP 100%)
+- **Build Status:** ✅ 0 errors, 0 warnings
+- **Production Endpoints:** 7
+- **Lines of Code:** ~2500
+
+---
+
+## 💾 Database
+
+### Created Tables
 
 ```sql
-pacientes           -- Dados dos pacientes
-documentos          -- Arquivos uploadados (com hash SHA256)
-tipos_exame         -- Tipos de exames (seed de 10 tipos)
-exames              -- Exames realizados
-resultados_exame    -- Resultados de cada parâmetro
+pacientes           -- Patient data
+documentos          -- Uploaded files (with SHA256 hash)
+tipos_exame         -- Exam types (seed with 10 types)
+exames              -- Performed exams
+resultados_exame    -- Results for each parameter
 ```
 
-### Relacionamentos
+### Relationships
 
 ```
 pacientes (1) ─── (N) documentos
@@ -355,209 +398,237 @@ tipos_exame (1) ─── (N) exames
 exames (1) ─── (N) resultados_exame
 ```
 
-### Gerenciamento via pgAdmin 🎯
+### Management via pgAdmin 🎯
 
-Se você subiu o Docker Compose, pode acessar o pgAdmin:
+If you started Docker Compose, you can access pgAdmin:
 
-1. **Acessar:** http://localhost:5050
+1. **Access:** http://localhost:5050
 2. **Login:**
    - Email: `admin@examai.com`
-   - Senha: `admin123`
-3. **Conectar ao PostgreSQL:**
-   - Host: `postgres` (ou `localhost` se externo)
+   - Password: `admin123`
+3. **Connect to PostgreSQL:**
+   - Host: `postgres` (or `localhost` if external)
    - Port: `5432`
    - Database: `examai`
    - Username: `postgres`
    - Password: `postgres123`
 
-**Interface visual para:**
-- ✅ Ver estrutura das tabelas
-- ✅ Executar queries SQL
-- ✅ Ver dados em tempo real
-- ✅ Fazer backup/restore
-- ✅ Monitorar performance
+**Visual interface for:**
+- ✅ View table structure
+- ✅ Execute SQL queries
+- ✅ See data in real-time
+- ✅ Backup/restore
+- ✅ Monitor performance
 
 ---
 
-## 🎯 Casos de Uso Suportados
+## 🎯 Supported Use Cases
 
-### ✅ Caso 1: Novo Upload
-1. Usuário faz upload de PDF/Word/Excel
-2. Sistema valida formato e tamanho
-3. Sistema calcula hash SHA256
-4. Sistema processa com LLM (Ollama)
-5. Sistema valida (15+ regras)
-6. Sistema normaliza (30+ mapeamentos)
-7. Sistema salva no PostgreSQL
-8. Retorna 202 Accepted
-9. Usuário consulta status posteriormente
+### ✅ Case 1: New Upload
+1. User uploads PDF/Word/Excel
+2. System validates format and size
+3. System calculates SHA256 hash
+4. System checks for duplicates
+5. System processes with LLM (Ollama)
+6. System validates (15+ rules)
+7. System normalizes (30+ mappings)
+8. System saves to PostgreSQL
+9. Returns results immediately
 
-### ✅ Caso 2: Duplicata Detectada
-1. Usuário faz upload do mesmo arquivo
-2. Sistema calcula hash
-3. Sistema detecta duplicata
-4. **Retorna resultado cacheado instantaneamente**
-5. **Não processa novamente** (economia!)
+### ✅ Case 2: Duplicate Detected
+1. User uploads the same file
+2. System calculates hash
+3. System detects duplicate
+4. **Returns cached result instantly**
+5. **Does not reprocess** (saves resources!)
 
-### ✅ Caso 3: Consulta de Histórico
-1. Usuário fornece CPF do paciente
-2. Sistema busca todos os exames
-3. Sistema retorna lista completa
-4. Suporta filtros (data, tipo de exame)
+### ✅ Case 3: History Query
+1. User provides patient's CPF
+2. System searches all exams
+3. System returns complete list
+4. Supports filters (date, exam type)
+
+### ✅ Case 4: Patient Not Identified
+1. User uploads document without patient identification
+2. System processes normally
+3. System creates patient with:
+   - Name: "Paciente não identificado"
+   - CPF: null
+4. Results are still saved and queryable
 
 ---
 
-## 🔒 Segurança e Validações
+## 🔒 Security and Validations
 
-- ✅ Validação de CPF com dígitos verificadores
-- ✅ Validação de tamanho máximo (10MB)
-- ✅ Validação de extensões permitidas (.pdf, .docx, .xlsx)
-- ✅ Hash SHA256 para integridade de dados
-- ✅ Tratamento robusto de erros
-- ✅ Transações ACID no banco
-- ✅ Logging estruturado completo
+- ✅ CPF validation with check digits
+- ✅ Maximum size validation (10MB)
+- ✅ Allowed extensions validation (.pdf, .docx, .xlsx)
+- ✅ SHA256 hash for data integrity
+- ✅ Robust error handling
+- ✅ ACID transactions in database
+- ✅ Complete structured logging
+- ✅ Graceful handling of missing patient data
 
 ---
 
 ## 🐳 Docker Setup
 
-O projeto inclui configuração completa com Docker Compose!
+The project includes complete Docker Compose configuration!
 
-### O que está incluído:
-- ✅ PostgreSQL 16 Alpine (otimizado)
-- ✅ pgAdmin 4 (interface web - opcional)
-- ✅ Volumes persistentes
+### What's included:
+- ✅ PostgreSQL 16 Alpine (optimized)
+- ✅ pgAdmin 4 (web interface - optional)
+- ✅ Persistent volumes
 - ✅ Health checks
-- ✅ Rede isolada
+- ✅ Isolated network
 
-### Comandos principais:
+### Main commands:
 
 ```bash
-# Subir tudo
+# Start everything
 docker-compose up -d
 
-# Ver logs
+# View logs
 docker-compose logs -f postgres
 
-# Parar
+# Stop
 docker-compose down
 
-# Acessar pgAdmin
+# Access pgAdmin
 http://localhost:5050
 # Email: admin@examai.com
-# Senha: admin123
+# Password: admin123
 ```
 
-📖 **Documentação completa:** [docker/README.md](docker/README.md)
+📖 **Complete documentation:** [docker/README.md](docker/README.md)
 
 ---
 
-## 🚀 Instalação e Setup
+## 🚀 Installation and Setup
 
-### Pré-requisitos
+### Prerequisites
 
 - **.NET 10 SDK** - https://dotnet.microsoft.com/download
-- **Docker & Docker Compose** - https://www.docker.com/get-started (recomendado)
-- **PostgreSQL 16+** - https://www.postgresql.org/download/ (ou Docker)
+- **Docker & Docker Compose** - https://www.docker.com/get-started (recommended)
+- **PostgreSQL 16+** - https://www.postgresql.org/download/ (or Docker)
 - **Ollama** - https://ollama.com
 
-### Passo a Passo
+### Step by Step
 
 ```bash
-# 1. Clonar repositório
+# 1. Clone repository
 git clone <repo-url>
 cd ExamAI
 
-# 2. Subir PostgreSQL (Docker)
+# 2. Start PostgreSQL (Docker)
 docker run --name postgres-medical \
   -e POSTGRES_PASSWORD=postgres123 \
   -e POSTGRES_DB=examai \
   -p 5432:5432 -d postgres:16-alpine
 
-# 3. Verificar Ollama
+# 3. Verify Ollama
 ollama list
-ollama pull llama3.1:8b
+ollama pull llama3.1:70b
 
-# 4. Aplicar migrations
+# 4. Apply migrations
 cd src/ExamAI.Api
 dotnet ef database update
 
-# 5. Rodar API
+# 5. Run API
 dotnet run
 
-# 6. Acessar
+# 6. Access
 # API: http://localhost:5076
 # Swagger: http://localhost:5076/swagger
 ```
 
 ---
 
-## 📚 Recursos Adicionais
+## 📚 Additional Resources
 
-### Documentação Técnica
-- [PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md) - Visão geral completa
-- [PROGRESS.md](docs/PROGRESS.md) - Todas as 20 USs implementadas
-- [PARSERS.md](docs/PARSERS.md) - Detalhes dos parsers
+### Technical Documentation
+- [PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md) - Complete overview
+- [PROGRESS.md](docs/PROGRESS.md) - All 20 implemented USs
+- [PARSERS.md](docs/PARSERS.md) - Parser details
 
-### Resumos das Sprints
+### Sprint Summaries
 - [SPRINT-1-SUMMARY.md](docs/SPRINT-1-SUMMARY.md) - Setup
 - [SPRINT-2-SUMMARY.md](docs/SPRINT-2-SUMMARY.md) - Parsing
-- [SPRINT-3-SUMMARY.md](docs/SPRINT-3-SUMMARY.md) - Extração IA
-- [SPRINT-4-SUMMARY.md](docs/SPRINT-4-SUMMARY.md) - Persistência
+- [SPRINT-3-SUMMARY.md](docs/SPRINT-3-SUMMARY.md) - AI Extraction
+- [SPRINT-4-SUMMARY.md](docs/SPRINT-4-SUMMARY.md) - Persistence
 
 ### Setup Guides
-- [SETUP-POSTGRES.md](docs/SETUP-POSTGRES.md) - Setup do banco
-- [SETUP-OLLAMA.md](docs/SETUP-OLLAMA.md) - Setup do Ollama
-- [TEST-OLLAMA.md](docs/TEST-OLLAMA.md) - Testes de integração
+- [SETUP-POSTGRES.md](docs/SETUP-POSTGRES.md) - Database setup
+- [SETUP-OLLAMA.md](docs/SETUP-OLLAMA.md) - Ollama setup
+- [TEST-OLLAMA.md](docs/TEST-OLLAMA.md) - Integration tests
 
 ---
 
-## 🎉 Projeto Completo!
+## 🎉 Project Complete!
 
-### ✅ Todas as Funcionalidades MVP Implementadas
-- Upload de documentos médicos
-- Extração automática de dados
-- Validação e normalização
-- Persistência no banco
-- API REST completa
+### ✅ All MVP Features Implemented
+- Upload medical documents
+- Automatic data extraction
+- Validation and normalization
+- Database persistence
+- Complete REST API
 - Swagger/OpenAPI
-- Detecção de duplicatas
+- Duplicate detection
 - Health checks
+- Graceful patient identification handling
 
-### 🏆 Pronto para Produção!
+### 🏆 Production Ready!
 
-Sistema end-to-end funcional e testado, pronto para processar exames médicos reais!
+Functional and tested end-to-end system, ready to process real medical exams!
 
 ---
 
-## 👤 Autor
+## 📝 Changelog
+
+### Version 1.3.0 (2026-02-04)
+- ✅ **Simplified API:** Removed `cpf` and `nomePaciente` parameters from `/api/process-and-save`
+- ✅ **Auto-extraction:** Patient data is now fully extracted from the document by AI
+- ✅ **Graceful defaults:** Unidentified patients get `nome: "Paciente não identificado"` and `cpf: null`
+- ✅ **Cleaner codebase:** Removed unused test endpoints and repository methods
+- ✅ **Database update:** `documentos.paciente_id` is now nullable
+- ✅ **Production focus:** Only 7 essential endpoints for production use
+
+### Version 1.0.0 (2026-02-03)
+- ✅ Initial MVP release
+- ✅ All 20 User Stories implemented
+- ✅ Complete end-to-end processing pipeline
+- ✅ Production-ready REST API
+
+---
+
+## 👤 Author
 
 **Adjair Farias**
 - LinkedIn: [linkedin.com/in/farias-dev](https://linkedin.com/in/farias-dev)
 - Email: adjaircfarias@gmail.com
 - GitHub: [github.com/adjaircfarias](https://github.com/adjaircfarias)
 
-**Desenvolvido com:** Clawdex 🔍 (Claude Sonnet 4.5 via Clawdbot)
+**Developed with:** Clawdex 🔍 (Claude Sonnet 4.5 via Clawdbot)
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Este projeto está sob a licença MIT.
+This project is licensed under the MIT License.
 
 ---
 
-## 🙏 Agradecimentos
+## 🙏 Acknowledgments
 
-- **Ollama** - LLM local incrível
+- **Ollama** - Amazing local LLM
 - **Meta AI** - Llama 3.1
-- **.NET Team** - Framework excelente
-- **PostgreSQL** - Banco confiável
-- **Comunidade Open Source**
+- **.NET Team** - Excellent framework
+- **PostgreSQL** - Reliable database
+- **Open Source Community**
 
 ---
 
-**🎊 MVP 100% COMPLETO E FUNCIONAL! 🎊**
+**🎊 MVP 100% COMPLETE AND FUNCTIONAL! 🎊**
 
-*Última atualização: 04/02/2026 - 02:00*  
-*Versão: 1.0 - Production Ready*
+*Last update: February 4th, 2026 - 21:00 (GMT-3)*  
+*Version: 1.3.0 - Production Ready*
