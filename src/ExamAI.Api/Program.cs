@@ -230,23 +230,15 @@ app.MapGet("/health/database", async (AppDbContext dbContext, ILogger<Program> l
 // Endpoint completo: processar + salvar no banco (com detecção de duplicatas)
 app.MapPost("/api/process-and-save", async (
     IFormFile file,
-    string? cpf,
-    string? nomePaciente,
     MedicalExamPipeline pipeline,
     ExamRepository repository,
     DocumentHashService hashService,
-    ValidationAgent validationAgent,
     ILogger<Program> logger) =>
 {
     try
     {
         logger.LogInformation("Processing and saving exam: {FileName} ({Size} bytes)", 
             file.FileName, file.Length);
-
-        if (!string.IsNullOrWhiteSpace(cpf) && !validationAgent.IsValidCpf(cpf))
-        {
-            return Results.BadRequest(new { success = false, error = "Invalid CPF format" });
-        }
 
         // 1. Calcular hash SHA256 do arquivo
         using var hashStream = file.OpenReadStream();
@@ -288,47 +280,7 @@ app.MapPost("/api/process-and-save", async (
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
-        // 3. Criar ou buscar paciente
-        ExamAI.Domain.Entities.Paciente paciente;
-        
-        if (!string.IsNullOrWhiteSpace(cpf))
-        {
-            paciente = await dbContext.Pacientes.FirstOrDefaultAsync(p => p.Cpf == cpf);
-            
-            if (paciente == null)
-            {
-                paciente = new ExamAI.Domain.Entities.Paciente
-                {
-                    Id = Guid.NewGuid(),
-                    Cpf = cpf,
-                    Nome = nomePaciente ?? "Paciente Não Identificado",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                dbContext.Pacientes.Add(paciente);
-                await dbContext.SaveChangesAsync();
-            }
-            else if (!string.IsNullOrWhiteSpace(nomePaciente) && paciente.Nome != nomePaciente)
-            {
-                paciente.Nome = nomePaciente;
-                paciente.UpdatedAt = DateTime.UtcNow;
-                await dbContext.SaveChangesAsync();
-            }
-        }
-        else
-        {
-            paciente = new ExamAI.Domain.Entities.Paciente
-            {
-                Id = Guid.NewGuid(),
-                Nome = nomePaciente ?? "Paciente Não Identificado",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            dbContext.Pacientes.Add(paciente);
-            await dbContext.SaveChangesAsync();
-        }
-
-        // 4. Criar documento no banco
+        // 3. Criar documento no banco (sem paciente inicialmente)
         var documento = new ExamAI.Domain.Entities.Documento
         {
             Id = Guid.NewGuid(),
@@ -339,7 +291,7 @@ app.MapPost("/api/process-and-save", async (
             StatusProcessamento = "processing",
             DataUpload = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            PacienteId = paciente.Id
+            PacienteId = null // Será definido após processamento
         };
 
         dbContext.Documentos.Add(documento);
@@ -347,7 +299,7 @@ app.MapPost("/api/process-and-save", async (
 
         logger.LogInformation("Created documento ID: {DocumentoId}", documento.Id);
 
-        // 5. Processar documento
+        // 4. Processar documento
         using var stream = file.OpenReadStream();
         var result = await pipeline.ProcessAsync(stream, file.FileName);
 
@@ -366,7 +318,7 @@ app.MapPost("/api/process-and-save", async (
             }, statusCode: 500);
         }
 
-        // 6. Salvar resultado no banco
+        // 5. Salvar resultado no banco (cria/busca paciente internamente)
         var pacienteId = await repository.SaveExamAsync(result, documento.Id);
 
         logger.LogInformation("Saved exam result for paciente ID: {PacienteId}", pacienteId);

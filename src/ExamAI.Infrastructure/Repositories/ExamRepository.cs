@@ -216,21 +216,21 @@ public class ExamRepository
         PacienteInfo? pacienteInfo,
         CancellationToken cancellationToken)
     {
-        if (pacienteInfo == null || string.IsNullOrWhiteSpace(pacienteInfo.Nome))
-        {
-            throw new ArgumentException("Paciente information is required");
-        }
+        // Define nome padrão se não identificado
+        var nomePaciente = string.IsNullOrWhiteSpace(pacienteInfo?.Nome) 
+            ? "Paciente não identificado" 
+            : pacienteInfo.Nome;
 
         // Tentar buscar paciente existente por nome (simplificado)
         // Em produção, seria melhor usar CPF se disponível
         var pacienteExistente = await _context.Pacientes
             .FirstOrDefaultAsync(
-                p => p.Nome != null && p.Nome == pacienteInfo.Nome,
+                p => p.Nome != null && p.Nome == nomePaciente,
                 cancellationToken);
 
         if (pacienteExistente != null)
         {
-            _logger.LogDebug("Found existing paciente: {Nome}", pacienteInfo.Nome);
+            _logger.LogDebug("Found existing paciente: {Nome}", nomePaciente);
             return pacienteExistente;
         }
 
@@ -238,14 +238,14 @@ public class ExamRepository
         var novoPaciente = new Paciente
         {
             Id = Guid.NewGuid(),
-            Nome = pacienteInfo.Nome,
-            Cpf = null, // CPF será adicionado em iteração futura
-            DataNascimento = ParseDateOrDefault(pacienteInfo.DataNascimento)
+            Nome = nomePaciente,
+            Cpf = null, // CPF não identificado ou não extraído
+            DataNascimento = ParseDateOrDefault(pacienteInfo?.DataNascimento)
         };
 
         _context.Pacientes.Add(novoPaciente);
 
-        _logger.LogDebug("Created new paciente: {Nome}", pacienteInfo.Nome);
+        _logger.LogDebug("Created new paciente: {Nome}", nomePaciente);
 
         return novoPaciente;
     }
