@@ -148,3 +148,5 @@ docker-compose.override.yml
 # Backup files
 *.sql.backup
 backup*.sql
+OpenCode/OPENCODE_ANALISYS.MD_SYSTEM_REMINDER
+OpenCode/.gitkeep
