@@ -5,4 +5,7 @@
     <Project Path="src/ExamAI.Domain/ExamAI.Domain.csproj" />
     <Project Path="src/ExamAI.Infrastructure/ExamAI.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/ExamAI.Tests/ExamAI.Tests.csproj" />
+  </Folder>
 </Solution>
