@@ -210,51 +210,27 @@ public class ExamRepository
     }
 
     /// <summary>
-    /// Busca um exame específico por ID
-    /// </summary>
-    public async Task<Exame?> GetExamByIdAsync(
-        Guid exameId,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Searching exame with ID: {ExameId}", exameId);
-
-        var exame = await _context.Exames
-            .Include(e => e.Documento)
-                .ThenInclude(d => d.Paciente)
-            .Include(e => e.TipoExame)
-            .Include(e => e.Resultados)
-            .FirstOrDefaultAsync(e => e.Id == exameId, cancellationToken);
-
-        if (exame == null)
-        {
-            _logger.LogWarning("Exame with ID {ExameId} not found", exameId);
-        }
-
-        return exame;
-    }
-
-    /// <summary>
     /// Busca ou cria um paciente
     /// </summary>
     private async Task<Paciente> GetOrCreatePacienteAsync(
         PacienteInfo? pacienteInfo,
         CancellationToken cancellationToken)
     {
-        if (pacienteInfo == null || string.IsNullOrWhiteSpace(pacienteInfo.Nome))
-        {
-            throw new ArgumentException("Paciente information is required");
-        }
+        // Define nome padrão se não identificado
+        var nomePaciente = string.IsNullOrWhiteSpace(pacienteInfo?.Nome) 
+            ? "Paciente não identificado" 
+            : pacienteInfo.Nome;
 
         // Tentar buscar paciente existente por nome (simplificado)
         // Em produção, seria melhor usar CPF se disponível
         var pacienteExistente = await _context.Pacientes
             .FirstOrDefaultAsync(
-                p => p.Nome != null && p.Nome == pacienteInfo.Nome,
+                p => p.Nome != null && p.Nome == nomePaciente,
                 cancellationToken);
 
         if (pacienteExistente != null)
         {
-            _logger.LogDebug("Found existing paciente: {Nome}", pacienteInfo.Nome);
+            _logger.LogDebug("Found existing paciente: {Nome}", nomePaciente);
             return pacienteExistente;
         }
 
@@ -262,14 +238,14 @@ public class ExamRepository
         var novoPaciente = new Paciente
         {
             Id = Guid.NewGuid(),
-            Nome = pacienteInfo.Nome,
-            Cpf = null, // CPF será adicionado em iteração futura
-            DataNascimento = ParseDateOrDefault(pacienteInfo.DataNascimento)
+            Nome = nomePaciente,
+            Cpf = null, // CPF não identificado ou não extraído
+            DataNascimento = ParseDateOrDefault(pacienteInfo?.DataNascimento)
         };
 
         _context.Pacientes.Add(novoPaciente);
 
-        _logger.LogDebug("Created new paciente: {Nome}", pacienteInfo.Nome);
+        _logger.LogDebug("Created new paciente: {Nome}", nomePaciente);
 
         return novoPaciente;
     }
