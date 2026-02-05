@@ -11,7 +11,7 @@ public class NormalizationAgent
     private readonly ILogger<NormalizationAgent> _logger;
 
     // Dicionário de normalizações de nomes de exames
-    private static readonly Dictionary<string, string> ExameNormalizationMap = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> ExamNormalizationMap = new(StringComparer.OrdinalIgnoreCase)
     {
         // Colesterol
         { "Col. Total", "Colesterol Total" },
@@ -73,39 +73,39 @@ public class NormalizationAgent
         if (extractionResult == null)
             throw new ArgumentNullException(nameof(extractionResult));
 
-        _logger.LogInformation("Starting normalization of {ExameCount} exames", extractionResult.Exames?.Count ?? 0);
+        _logger.LogInformation("Starting normalization of {ExamCount} exams", extractionResult.Exams?.Count ?? 0);
 
-        if (extractionResult.Exames == null || extractionResult.Exames.Count == 0)
+        if (extractionResult.Exams == null || extractionResult.Exams.Count == 0)
         {
-            _logger.LogWarning("No exames to normalize");
+            _logger.LogWarning("No exams to normalize");
             return Task.FromResult(extractionResult);
         }
 
         int normalizedCount = 0;
 
-        foreach (var exame in extractionResult.Exames)
+        foreach (var exam in extractionResult.Exams)
         {
-            var originalTipo = exame.Tipo;
+            var originalType = exam.Type;
 
             // 1. Normalizar nome do exame
-            var normalizedTipo = NormalizeExameName(exame.Tipo);
-            if (normalizedTipo != originalTipo)
+            var normalizedType = NormalizeExamName(exam.Type);
+            if (normalizedType != originalType)
             {
-                _logger.LogDebug("Normalized: '{Original}' → '{Normalized}'", originalTipo, normalizedTipo);
-                exame.Tipo = normalizedTipo;
+                _logger.LogDebug("Normalized: '{Original}' → '{Normalized}'", originalType, normalizedType);
+                exam.Type = normalizedType;
                 normalizedCount++;
             }
 
             // 2. Normalizar unidade (limpeza básica)
-            if (!string.IsNullOrWhiteSpace(exame.Unidade))
+            if (!string.IsNullOrWhiteSpace(exam.Unit))
             {
-                exame.Unidade = exame.Unidade.Trim();
+                exam.Unit = exam.Unit.Trim();
             }
 
             // 3. Normalizar status (lowercase)
-            if (!string.IsNullOrWhiteSpace(exame.Status))
+            if (!string.IsNullOrWhiteSpace(exam.Status))
             {
-                exame.Status = exame.Status.ToLower().Trim();
+                exam.Status = exam.Status.ToLower().Trim();
             }
         }
 
@@ -119,40 +119,27 @@ public class NormalizationAgent
     /// <summary>
     /// Normaliza o nome de um exame usando o dicionário de mapeamento
     /// </summary>
-    private string NormalizeExameName(string exameName)
+    private string NormalizeExamName(string examName)
     {
-        if (string.IsNullOrWhiteSpace(exameName))
-            return exameName;
+        if (string.IsNullOrWhiteSpace(examName))
+            return examName;
 
         // Tentar match direto
-        if (ExameNormalizationMap.TryGetValue(exameName, out var normalized))
+        if (ExamNormalizationMap.TryGetValue(examName, out var normalized))
         {
             return normalized;
         }
 
         // Tentar match parcial (contém)
-        foreach (var kvp in ExameNormalizationMap)
+        foreach (var kvp in ExamNormalizationMap)
         {
-            if (exameName.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
+            if (examName.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
             {
                 return kvp.Value;
             }
         }
 
         // Não encontrado, retornar original com trim
-        return exameName.Trim();
-    }
-
-    /// <summary>
-    /// Converte unidades (opcional, implementação futura)
-    /// </summary>
-    public string? ConvertUnit(decimal value, string fromUnit, string toUnit)
-    {
-        // TODO: Implementar conversões de unidades se necessário
-        // Exemplo: mg/dL → mmol/L para glicose
-        _logger.LogDebug("Unit conversion not implemented yet: {Value} {FromUnit} → {ToUnit}",
-            value, fromUnit, toUnit);
-
-        return null;
+        return examName.Trim();
     }
 }

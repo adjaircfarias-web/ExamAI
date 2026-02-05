@@ -38,12 +38,12 @@ public class MedicalExamPipeline
     /// <param name="fileName">Nome do arquivo (para detectar tipo)</param>
     /// <param name="cancellationToken">Token de cancelamento</param>
     /// <returns>Resultado completo do processamento</returns>
-    public async Task<ExamResult> ProcessAsync(
+    public async Task<PipelineResult> ProcessAsync(
         Stream fileStream,
         string fileName,
         CancellationToken cancellationToken = default)
     {
-        var result = new ExamResult
+        var result = new PipelineResult
         {
             FileName = fileName,
             Stats = new ProcessingStats
@@ -96,11 +96,11 @@ public class MedicalExamPipeline
                 extractStopwatch.Stop();
                 
                 result.Stats.StepDurations["2_Extract"] = extractStopwatch.Elapsed;
-                result.Stats.ExamesExtracted = structuredData.Exames?.Count ?? 0;
+                result.Stats.ExtractedExams = structuredData.Exams?.Count ?? 0;
                 
                 _logger.LogInformation(
-                    "Step 2/4 completed: Extracted {ExameCount} exames in {Duration}ms",
-                    result.Stats.ExamesExtracted,
+                    "Step 2/4 completed: Extracted {ExamCount} exams in {Duration}ms",
+                    result.Stats.ExtractedExams,
                     extractStopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
@@ -151,11 +151,11 @@ public class MedicalExamPipeline
                 
                 result.Data = structuredData;
                 result.Stats.StepDurations["4_Normalize"] = normalizeStopwatch.Elapsed;
-                result.Stats.ExamesNormalized = structuredData.Exames?.Count ?? 0;
+                result.Stats.NormalizedExams = structuredData.Exams?.Count ?? 0;
                 
                 _logger.LogInformation(
-                    "Step 4/4 completed: {ExameCount} exames normalized in {Duration}ms",
-                    result.Stats.ExamesNormalized,
+                    "Step 4/4 completed: {ExamCount} exams normalized in {Duration}ms",
+                    result.Stats.NormalizedExams,
                     normalizeStopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
@@ -172,9 +172,9 @@ public class MedicalExamPipeline
             result.Stats.CompletedAt = DateTime.UtcNow;
 
             _logger.LogInformation(
-                "Pipeline completed successfully for {FileName}: {ExameCount} exames processed in {Duration}ms (Parse: {ParseMs}ms, Extract: {ExtractMs}ms, Validate: {ValidateMs}ms, Normalize: {NormalizeMs}ms)",
+                "Pipeline completed successfully for {FileName}: {ExamCount} exams processed in {Duration}ms (Parse: {ParseMs}ms, Extract: {ExtractMs}ms, Validate: {ValidateMs}ms, Normalize: {NormalizeMs}ms)",
                 fileName,
-                result.Stats.ExamesExtracted,
+                result.Stats.ExtractedExams,
                 result.Stats.Duration.TotalMilliseconds,
                 result.Stats.StepDurations["1_Parse"].TotalMilliseconds,
                 result.Stats.StepDurations["2_Extract"].TotalMilliseconds,

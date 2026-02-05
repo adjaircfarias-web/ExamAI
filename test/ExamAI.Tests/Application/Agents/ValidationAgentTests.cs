@@ -46,54 +46,54 @@ public class ValidationAgentTests
     }
 
     [Fact]
-    public void Validate_WhenPacienteIsNull_ShouldAddWarning()
+    public void Validate_WhenPatientIsNull_ShouldAddWarning()
     {
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = null,
-            Exames = new List<ExameInfo>()
+            Patient = null,
+            Exams = new List<ExamInfo>()
         };
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
-        validation.Warnings.Should().ContainSingle(w => w.Field == "paciente");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "patient");
     }
 
     [Fact]
-    public void Validate_WhenExamesIsNull_ShouldAddWarning()
+    public void Validate_WhenExamsIsNull_ShouldAddWarning()
     {
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test" },
-            Exames = null!
+            Patient = new PatientInfo { Name = "Test" },
+            Exams = null!
         };
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams");
     }
 
     [Fact]
-    public void Validate_WhenExamesIsEmpty_ShouldAddWarning()
+    public void Validate_WhenExamsIsEmpty_ShouldAddWarning()
     {
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test" },
-            Exames = new List<ExameInfo>()
+            Patient = new PatientInfo { Name = "Test" },
+            Exams = new List<ExamInfo>()
         };
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams");
     }
 
     #endregion
@@ -113,7 +113,7 @@ public class ValidationAgentTests
         var validation = _sut.Validate(result);
 
         // Assert
-        validation.Warnings.Should().NotContain(w => w.Field.Contains("data_coleta"));
+        validation.Warnings.Should().NotContain(w => w.Field.Contains("collection_date"));
     }
 
     [Theory]
@@ -132,12 +132,12 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "paciente.data_coleta" && 
-            w.Message.Contains("formato inválido"));
+            w.Field == "patient.collection_date" && 
+            w.Message.Contains("invalid format"));
     }
 
     [Fact]
-    public void Validate_WithEmptyDataColeta_ShouldAddWarning()
+    public void Validate_WithEmptyCollectionDate_ShouldAddWarning()
     {
         // Arrange
         var result = CreateExtractionResultWithDate("");
@@ -147,8 +147,8 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "paciente.data_coleta" && 
-            w.Message.Contains("não foi informada"));
+            w.Field == "patient.collection_date" && 
+            w.Message.Contains("was not provided"));
     }
 
     #endregion
@@ -159,60 +159,60 @@ public class ValidationAgentTests
     public void Validate_WithNegativeValue_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(valor: -10);
+        var result = CreateExtractionResultWithExam(value: -10);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].valor" && 
-            w.Message.Contains("negativo"));
+            w.Field == "exams[0].value" && 
+            w.Message.Contains("Negative"));
     }
 
     [Fact]
     public void Validate_WithVeryHighValue_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(valor: 2000000);
+        var result = CreateExtractionResultWithExam(value: 2000000);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].valor" && 
-            w.Message.Contains("muito alto"));
+            w.Field == "exams[0].value" && 
+            w.Message.Contains("Very high"));
     }
 
     [Fact]
     public void Validate_WithNullValue_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(valor: null);
+        var result = CreateExtractionResultWithExam(value: null);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].valor" && 
-            w.Message.Contains("não foi informado"));
+            w.Field == "exams[0].value" && 
+            w.Message.Contains("was not provided"));
     }
 
     [Fact]
     public void Validate_WithValidValue_ShouldNotAddValueWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(valor: 150);
+        var result = CreateExtractionResultWithExam(value: 150);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().NotContain(w => 
-            w.Field == "exames[0].valor" && 
-            (w.Message.Contains("negativo") || w.Message.Contains("muito alto")));
+            w.Field == "exams[0].value" && 
+            (w.Message.Contains("Negative") || w.Message.Contains("Very high")));
     }
 
     #endregion
@@ -224,17 +224,17 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: null);
+            value: 100,
+            referenceMin: 50,
+            referenceMax: null);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].referencia" && 
-            w.Message.Contains("máxima ausente"));
+            w.Field == "exams[0].reference" && 
+            w.Message.Contains("maximum is missing"));
     }
 
     [Fact]
@@ -242,17 +242,17 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: null,
-            referenciaMax: 200);
+            value: 100,
+            referenceMin: null,
+            referenceMax: 200);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].referencia" && 
-            w.Message.Contains("mínima ausente"));
+            w.Field == "exams[0].reference" && 
+            w.Message.Contains("minimum is missing"));
     }
 
     [Fact]
@@ -260,17 +260,17 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 200,
-            referenciaMax: 100);
+            value: 100,
+            referenceMin: 200,
+            referenceMax: 100);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].referencia" && 
-            w.Message.Contains("mínima maior que máxima"));
+            w.Field == "exams[0].reference" && 
+            w.Message.Contains("greater than maximum"));
     }
 
     [Fact]
@@ -278,16 +278,16 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: 200);
+            value: 100,
+            referenceMin: 50,
+            referenceMax: 200);
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().NotContain(w => 
-            w.Field == "exames[0].referencia");
+            w.Field == "exams[0].reference");
     }
 
     #endregion
@@ -296,16 +296,16 @@ public class ValidationAgentTests
 
     [Theory]
     [InlineData("normal")]
-    [InlineData("baixo")]
-    [InlineData("alto")]
-    [InlineData("crítico")]
+    [InlineData("low")]
+    [InlineData("high")]
+    [InlineData("critical")]
     public void Validate_WithValidStatus_ShouldNotAddStatusWarning(string validStatus)
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: 200,
+            value: 100,
+            referenceMin: 50,
+            referenceMax: 200,
             status: validStatus);
 
         // Act
@@ -313,8 +313,8 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().NotContain(w => 
-            w.Field == "exames[0].status" && 
-            w.Message.Contains("Status inválido"));
+            w.Field == "exams[0].status" && 
+            w.Message.Contains("Invalid status"));
     }
 
     [Theory]
@@ -326,9 +326,9 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: 200,
+            value: 100,
+            referenceMin: 50,
+            referenceMax: 200,
             status: invalidStatus);
 
         // Act
@@ -336,8 +336,8 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].status" && 
-            w.Message.Contains("Status inválido"));
+            w.Field == "exams[0].status" && 
+            w.Message.Contains("Invalid status"));
     }
 
     #endregion
@@ -349,18 +349,18 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: 200,
-            status: "alto");
+            value: 100,
+            referenceMin: 50,
+            referenceMax: 200,
+            status: "high");
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].status" && 
-            w.Message.Contains("dentro da referência mas status não é 'normal'"));
+            w.Field == "exams[0].status" && 
+            w.Message.Contains("is within reference but status is not"));
     }
 
     [Fact]
@@ -368,9 +368,9 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 250,
-            referenciaMin: 50,
-            referenciaMax: 200,
+            value: 250,
+            referenceMin: 50,
+            referenceMax: 200,
             status: "normal");
 
         // Act
@@ -378,8 +378,8 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].status" && 
-            w.Message.Contains("fora da referência mas status é 'normal'"));
+            w.Field == "exams[0].status" && 
+            w.Message.Contains("is outside reference but status is"));
     }
 
     [Fact]
@@ -387,9 +387,9 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            valor: 100,
-            referenciaMin: 50,
-            referenciaMax: 200,
+            value: 100,
+            referenceMin: 50,
+            referenceMax: 200,
             status: "normal");
 
         // Act
@@ -397,8 +397,8 @@ public class ValidationAgentTests
 
         // Assert
         validation.Warnings.Should().NotContain(w => 
-            w.Message.Contains("dentro da referência") || 
-            w.Message.Contains("fora da referência"));
+            w.Message.Contains("is within reference") || 
+            w.Message.Contains("is outside reference"));
     }
 
     #endregion
@@ -409,45 +409,45 @@ public class ValidationAgentTests
     public void Validate_WithEmptyExamType_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(tipo: "");
+        var result = CreateExtractionResultWithExam(type: "");
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].tipo" && 
-            w.Message.Contains("vazio"));
+            w.Field == "exams[0].type" && 
+            w.Message.Contains("empty"));
     }
 
     [Fact]
     public void Validate_WithShortExamType_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(tipo: "AB");
+        var result = CreateExtractionResultWithExam(type: "AB");
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].tipo" && 
-            w.Message.Contains("muito curto"));
+            w.Field == "exams[0].type" && 
+            w.Message.Contains("too short"));
     }
 
     [Fact]
     public void Validate_WithEmptyUnit_ShouldAddWarning()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam(unidade: "");
+        var result = CreateExtractionResultWithExam(unit: "");
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().Contain(w => 
-            w.Field == "exames[0].unidade" && 
-            w.Message.Contains("não foi informada"));
+            w.Field == "exams[0].unit" && 
+            w.Message.Contains("was not provided"));
     }
 
     [Fact]
@@ -455,15 +455,15 @@ public class ValidationAgentTests
     {
         // Arrange
         var result = CreateExtractionResultWithExam(
-            tipo: "Colesterol Total",
-            unidade: "mg/dL");
+            type: "Colesterol Total",
+            unit: "mg/dL");
 
         // Act
         var validation = _sut.Validate(result);
 
         // Assert
         validation.Warnings.Should().NotContain(w => 
-            w.Field == "exames[0].tipo" || w.Field == "exames[0].unidade");
+            w.Field == "exams[0].type" || w.Field == "exams[0].unit");
     }
 
     #endregion
@@ -476,16 +476,16 @@ public class ValidationAgentTests
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo
+            Patient = new PatientInfo
             {
-                Nome = "Test Patient",
-                DataColeta = "2026-02-04"
+                Name = "Test Patient",
+                CollectionDate = "2026-02-04"
             },
-            Exames = new List<ExameInfo>
+            Exams = new List<ExamInfo>
             {
-                new() { Tipo = "HDL", Valor = -5, Unidade = "mg/dL", Status = "normal" },
-                new() { Tipo = "AB", Valor = 100, Unidade = "mg/dL", Status = "invalid" },
-                new() { Tipo = "LDL", Valor = 150, Unidade = "", Status = "normal" }
+                new() { Type = "HDL", Value = -5, Unit = "mg/dL", Status = "normal" },
+                new() { Type = "AB", Value = 100, Unit = "mg/dL", Status = "invalid" },
+                new() { Type = "LDL", Value = 150, Unit = "", Status = "normal" }
             }
         };
 
@@ -493,10 +493,10 @@ public class ValidationAgentTests
         var validation = _sut.Validate(result);
 
         // Assert
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames[0].valor");
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames[1].tipo");
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames[1].status");
-        validation.Warnings.Should().ContainSingle(w => w.Field == "exames[2].unidade");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams[0].value");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams[1].type");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams[1].status");
+        validation.Warnings.Should().ContainSingle(w => w.Field == "exams[2].unit");
     }
 
     #endregion
@@ -509,22 +509,22 @@ public class ValidationAgentTests
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo
+            Patient = new PatientInfo
             {
-                Nome = "Test Patient",
-                DataNascimento = "1980-01-15",
-                DataColeta = "2026-02-04",
-                MedicoSolicitante = "Dr. Test"
+                Name = "Test Patient",
+                BirthDate = "1980-01-15",
+                CollectionDate = "2026-02-04",
+                RequestingPhysician = "Dr. Test"
             },
-            Exames = new List<ExameInfo>
+            Exams = new List<ExamInfo>
             {
                 new()
                 {
-                    Tipo = "Colesterol Total",
-                    Valor = 150,
-                    Unidade = "mg/dL",
-                    ReferenciaMin = 100,
-                    ReferenciaMax = 200,
+                    Type = "Colesterol Total",
+                    Value = 150,
+                    Unit = "mg/dL",
+                    ReferenceMin = 100,
+                    ReferenceMax = 200,
                     Status = "normal"
                 }
             }
@@ -542,22 +542,22 @@ public class ValidationAgentTests
 
     #region Helper Methods
 
-    private static ExamExtractionResult CreateExtractionResultWithDate(string dataColeta)
+    private static ExamExtractionResult CreateExtractionResultWithDate(string collectionDate)
     {
         return new ExamExtractionResult
         {
-            Paciente = new PacienteInfo
+            Patient = new PatientInfo
             {
-                Nome = "Test Patient",
-                DataColeta = dataColeta
+                Name = "Test Patient",
+                CollectionDate = collectionDate
             },
-            Exames = new List<ExameInfo>
+            Exams = new List<ExamInfo>
             {
                 new()
                 {
-                    Tipo = "Test",
-                    Valor = 100,
-                    Unidade = "mg/dL",
+                    Type = "Test",
+                    Value = 100,
+                    Unit = "mg/dL",
                     Status = "normal"
                 }
             }
@@ -565,29 +565,29 @@ public class ValidationAgentTests
     }
 
     private static ExamExtractionResult CreateExtractionResultWithExam(
-        string tipo = "Colesterol Total",
-        decimal? valor = 100,
-        string unidade = "mg/dL",
-        decimal? referenciaMin = 50,
-        decimal? referenciaMax = 200,
+        string type = "Colesterol Total",
+        decimal? value = 100,
+        string unit = "mg/dL",
+        decimal? referenceMin = 50,
+        decimal? referenceMax = 200,
         string status = "normal")
     {
         return new ExamExtractionResult
         {
-            Paciente = new PacienteInfo
+            Patient = new PatientInfo
             {
-                Nome = "Test Patient",
-                DataColeta = "2026-02-04"
+                Name = "Test Patient",
+                CollectionDate = "2026-02-04"
             },
-            Exames = new List<ExameInfo>
+            Exams = new List<ExamInfo>
             {
                 new()
                 {
-                    Tipo = tipo,
-                    Valor = valor,
-                    Unidade = unidade,
-                    ReferenciaMin = referenciaMin,
-                    ReferenciaMax = referenciaMax,
+                    Type = type,
+                    Value = value,
+                    Unit = unit,
+                    ReferenceMin = referenceMin,
+                    ReferenceMax = referenceMax,
                     Status = status
                 }
             }

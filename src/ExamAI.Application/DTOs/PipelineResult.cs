@@ -3,7 +3,7 @@ namespace ExamAI.Application.DTOs;
 /// <summary>
 /// Resultado completo do processamento de um documento médico
 /// </summary>
-public class ExamResult
+public class PipelineResult
 {
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
@@ -34,8 +34,8 @@ public class ProcessingStats
         ? CompletedAt.Value - StartedAt 
         : TimeSpan.Zero;
     
-    public int ExamesExtracted { get; set; }
-    public int ExamesNormalized { get; set; }
+    public int ExtractedExams { get; set; }
+    public int NormalizedExams { get; set; }
     public int ValidationWarnings { get; set; }
     
     public Dictionary<string, TimeSpan> StepDurations { get; set; } = new();

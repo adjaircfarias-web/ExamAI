@@ -46,13 +46,13 @@ public class NormalizationAgentTests
     }
 
     [Fact]
-    public async Task NormalizeAsync_WhenExamesIsNull_ShouldReturnSameResult()
+    public async Task NormalizeAsync_WhenExamsIsNull_ShouldReturnSameResult()
     {
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test" },
-            Exames = null!
+            Patient = new PatientInfo { Name = "Test" },
+            Exams = null!
         };
 
         // Act
@@ -60,17 +60,17 @@ public class NormalizationAgentTests
 
         // Assert
         normalized.Should().BeSameAs(result);
-        normalized.Exames.Should().BeNull();
+        normalized.Exams.Should().BeNull();
     }
 
     [Fact]
-    public async Task NormalizeAsync_WhenExamesIsEmpty_ShouldReturnSameResult()
+    public async Task NormalizeAsync_WhenExamsIsEmpty_ShouldReturnSameResult()
     {
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test" },
-            Exames = new List<ExameInfo>()
+            Patient = new PatientInfo { Name = "Test" },
+            Exams = new List<ExamInfo>()
         };
 
         // Act
@@ -78,7 +78,7 @@ public class NormalizationAgentTests
 
         // Assert
         normalized.Should().BeSameAs(result);
-        normalized.Exames.Should().BeEmpty();
+        normalized.Exams.Should().BeEmpty();
     }
 
     #endregion
@@ -102,7 +102,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Tipo.Should().Be(expectedName);
+        normalized.Exams![0].Type.Should().Be(expectedName);
     }
 
     [Theory]
@@ -122,7 +122,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Tipo.Should().Be(expectedName);
+        normalized.Exams![0].Type.Should().Be(expectedName);
     }
 
     [Theory]
@@ -142,21 +142,21 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Tipo.Should().Be(expectedFullName);
+        normalized.Exams![0].Type.Should().Be(expectedFullName);
     }
 
     [Fact]
-    public async Task NormalizeAsync_WithUnknownExameName_ShouldReturnOriginalTrimmed()
+    public async Task NormalizeAsync_WithUnknownExamName_ShouldReturnOriginalTrimmed()
     {
         // Arrange
-        var unknownName = "  Exame Desconhecido XYZ  ";
+        var unknownName = "  Unknown Exam XYZ  ";
         var result = CreateExtractionResultWithExam(unknownName);
 
         // Act
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Tipo.Should().Be("Exame Desconhecido XYZ");
+        normalized.Exams![0].Type.Should().Be("Unknown Exam XYZ");
     }
 
     [Fact]
@@ -171,11 +171,11 @@ public class NormalizationAgentTests
 
         // Assert
         // Should match "Colesterol" key and normalize
-        normalized.Exames![0].Tipo.Should().Be("Colesterol Total");
+        normalized.Exams![0].Type.Should().Be("Colesterol Total");
     }
 
     [Fact]
-    public async Task NormalizeAsync_WithEmptyExameName_ShouldReturnEmpty()
+    public async Task NormalizeAsync_WithEmptyExamName_ShouldReturnEmpty()
     {
         // Arrange
         var result = CreateExtractionResultWithExam("");
@@ -184,11 +184,11 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Tipo.Should().BeEmpty();
+        normalized.Exams![0].Type.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task NormalizeAsync_WithWhitespaceOnlyExameName_ShouldReturnOriginal()
+    public async Task NormalizeAsync_WithWhitespaceOnlyExamName_ShouldReturnOriginal()
     {
         // Arrange
         var whitespaceOnly = "   ";
@@ -199,7 +199,7 @@ public class NormalizationAgentTests
 
         // Assert
         // O código retorna o original quando é apenas whitespace (não trim)
-        normalized.Exames![0].Tipo.Should().Be(whitespaceOnly);
+        normalized.Exams![0].Type.Should().Be(whitespaceOnly);
     }
 
     #endregion
@@ -215,39 +215,39 @@ public class NormalizationAgentTests
         string originalUnit, string expectedUnit)
     {
         // Arrange
-        var result = CreateExtractionResultWithExam("Test", unidade: originalUnit);
+        var result = CreateExtractionResultWithExam("Test", unit: originalUnit);
 
         // Act
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Unidade.Should().Be(expectedUnit);
+        normalized.Exams![0].Unit.Should().Be(expectedUnit);
     }
 
     [Fact]
     public async Task NormalizeAsync_WithNullUnit_ShouldRemainNull()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam("Test", unidade: null);
+        var result = CreateExtractionResultWithExam("Test", unit: null);
 
         // Act
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Unidade.Should().BeNull();
+        normalized.Exams![0].Unit.Should().BeNull();
     }
 
     [Fact]
     public async Task NormalizeAsync_WithEmptyUnit_ShouldRemainEmpty()
     {
         // Arrange
-        var result = CreateExtractionResultWithExam("Test", unidade: "");
+        var result = CreateExtractionResultWithExam("Test", unit: "");
 
         // Act
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Unidade.Should().BeEmpty();
+        normalized.Exams![0].Unit.Should().BeEmpty();
     }
 
     #endregion
@@ -273,7 +273,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Status.Should().Be(expectedStatus);
+        normalized.Exams![0].Status.Should().Be(expectedStatus);
     }
 
     [Theory]
@@ -290,7 +290,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Status.Should().Be(expectedStatus);
+        normalized.Exams![0].Status.Should().Be(expectedStatus);
     }
 
     [Fact]
@@ -303,7 +303,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Status.Should().BeNull();
+        normalized.Exams![0].Status.Should().BeNull();
     }
 
     [Fact]
@@ -316,7 +316,7 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames![0].Status.Should().BeEmpty();
+        normalized.Exams![0].Status.Should().BeEmpty();
     }
 
     #endregion
@@ -329,12 +329,12 @@ public class NormalizationAgentTests
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test Patient" },
-            Exames = new List<ExameInfo>
+            Patient = new PatientInfo { Name = "Test Patient" },
+            Exams = new List<ExamInfo>
             {
-                new() { Tipo = "Col. Total", Unidade = "  mg/dL  ", Status = "NORMAL" },
-                new() { Tipo = "HDL", Unidade = "mg/dL", Status = "Alto" },
-                new() { Tipo = "Glicose", Unidade = "  mg/dL", Status = "  Baixo  " }
+                new() { Type = "Col. Total", Unit = "  mg/dL  ", Status = "NORMAL" },
+                new() { Type = "HDL", Unit = "mg/dL", Status = "Alto" },
+                new() { Type = "Glicose", Unit = "  mg/dL", Status = "  Baixo  " }
             }
         };
 
@@ -342,19 +342,19 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames.Should().HaveCount(3);
+        normalized.Exams.Should().HaveCount(3);
         
-        normalized.Exames[0].Tipo.Should().Be("Colesterol Total");
-        normalized.Exames[0].Unidade.Should().Be("mg/dL");
-        normalized.Exames[0].Status.Should().Be("normal");
+        normalized.Exams[0].Type.Should().Be("Colesterol Total");
+        normalized.Exams[0].Unit.Should().Be("mg/dL");
+        normalized.Exams[0].Status.Should().Be("normal");
 
-        normalized.Exames[1].Tipo.Should().Be("Colesterol HDL");
-        normalized.Exames[1].Unidade.Should().Be("mg/dL");
-        normalized.Exames[1].Status.Should().Be("alto");
+        normalized.Exams[1].Type.Should().Be("Colesterol HDL");
+        normalized.Exams[1].Unit.Should().Be("mg/dL");
+        normalized.Exams[1].Status.Should().Be("alto");
 
-        normalized.Exames[2].Tipo.Should().Be("Glicemia em Jejum");
-        normalized.Exames[2].Unidade.Should().Be("mg/dL");
-        normalized.Exames[2].Status.Should().Be("baixo");
+        normalized.Exams[2].Type.Should().Be("Glicemia em Jejum");
+        normalized.Exams[2].Unit.Should().Be("mg/dL");
+        normalized.Exams[2].Status.Should().Be("baixo");
     }
 
     [Fact]
@@ -363,12 +363,12 @@ public class NormalizationAgentTests
         // Arrange
         var result = new ExamExtractionResult
         {
-            Paciente = new PacienteInfo { Nome = "Test Patient" },
-            Exames = new List<ExameInfo>
+            Patient = new PatientInfo { Name = "Test Patient" },
+            Exams = new List<ExamInfo>
             {
-                new() { Tipo = "HDL", Unidade = "mg/dL", Status = "Normal" },
-                new() { Tipo = "Exame Customizado", Unidade = "U/L", Status = "Alto" },
-                new() { Tipo = "TGO", Unidade = "U/L", Status = "Baixo" }
+                new() { Type = "HDL", Unit = "mg/dL", Status = "Normal" },
+                new() { Type = "Custom Exam", Unit = "U/L", Status = "Alto" },
+                new() { Type = "TGO", Unit = "U/L", Status = "Baixo" }
             }
         };
 
@@ -376,9 +376,9 @@ public class NormalizationAgentTests
         var normalized = await _sut.NormalizeAsync(result);
 
         // Assert
-        normalized.Exames[0].Tipo.Should().Be("Colesterol HDL");
-        normalized.Exames[1].Tipo.Should().Be("Exame Customizado");
-        normalized.Exames[2].Tipo.Should().Be("TGO (AST)");
+        normalized.Exams[0].Type.Should().Be("Colesterol HDL");
+        normalized.Exams[1].Type.Should().Be("Custom Exam");
+        normalized.Exams[2].Type.Should().Be("TGO (AST)");
     }
 
     #endregion
@@ -397,7 +397,7 @@ public class NormalizationAgentTests
 
         // Assert
         normalized.Should().NotBeNull();
-        normalized.Exames![0].Tipo.Should().Be("Colesterol HDL");
+        normalized.Exams![0].Type.Should().Be("Colesterol HDL");
     }
 
     [Fact]
@@ -418,27 +418,27 @@ public class NormalizationAgentTests
     #region Helper Methods
 
     private static ExamExtractionResult CreateExtractionResultWithExam(
-        string tipoExame,
-        string? unidade = "mg/dL",
+        string examType,
+        string? unit = "mg/dL",
         string? status = "normal")
     {
         return new ExamExtractionResult
         {
-            Paciente = new PacienteInfo
+            Patient = new PatientInfo
             {
-                Nome = "Test Patient",
-                DataNascimento = "1980-01-01",
-                DataColeta = "2026-02-04"
+                Name = "Test Patient",
+                BirthDate = "1980-01-01",
+                CollectionDate = "2026-02-04"
             },
-            Exames = new List<ExameInfo>
+            Exams = new List<ExamInfo>
             {
                 new()
                 {
-                    Tipo = tipoExame,
-                    Valor = 100.0m,
-                    Unidade = unidade,
-                    ReferenciaMin = 50.0m,
-                    ReferenciaMax = 200.0m,
+                    Type = examType,
+                    Value = 100.0m,
+                    Unit = unit,
+                    ReferenceMin = 50.0m,
+                    ReferenceMax = 200.0m,
                     Status = status
                 }
             }

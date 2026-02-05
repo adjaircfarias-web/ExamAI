@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using ExamAI.Application.DTOs;
 using Microsoft.Extensions.Configuration;
@@ -93,9 +92,9 @@ public class ExtractionAgent
                 var result = ParseExtractionResult(jsonText);
 
                 _logger.LogInformation(
-                    "Extraction successful: {ExameCount} exames found, patient: {PatientName}",
-                    result.Exames.Count,
-                    result.Paciente?.Nome ?? "N/A");
+                    "Extraction successful: {ExamCount} exams found, patient: {PatientName}",
+                    result.Exams.Count,
+                    result.Patient?.Name ?? "N/A");
 
                 return result;
             }
@@ -244,9 +243,9 @@ Retorne apenas o JSON estruturado conforme as instruções.";
             }
 
             _logger.LogDebug(
-                "Successfully parsed JSON: {ExameCount} exames, patient: {PatientName}",
-                result.Exames?.Count ?? 0,
-                result.Paciente?.Nome ?? "N/A");
+                "Successfully parsed JSON: {ExamCount} exams, patient: {PatientName}",
+                result.Exams?.Count ?? 0,
+                result.Patient?.Name ?? "N/A");
 
             return result;
         }

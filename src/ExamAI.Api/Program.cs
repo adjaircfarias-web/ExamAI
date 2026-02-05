@@ -247,32 +247,32 @@ app.MapPost("/api/process-and-save", async (
         logger.LogInformation("File hash: {Hash}", fileHash);
 
         // 2. Verificar se documento já foi processado (duplicata)
-        var existingDocumento = await repository.FindDocumentoByHashAsync(fileHash);
+        var existingDocument = await repository.FindDocumentByHashAsync(fileHash);
         
-        if (existingDocumento != null)
+        if (existingDocument != null)
         {
             logger.LogInformation(
-                "Duplicate document found! Hash: {Hash}, Documento ID: {DocumentoId}",
+                "Duplicate document found! Hash: {Hash}, Document ID: {DocumentId}",
                 fileHash,
-                existingDocumento.Id);
+                existingDocument.Id);
 
             // Retornar resultado existente sem reprocessar
             return Results.Ok(new
             {
                 success = true,
                 duplicate = true,
-                documentoId = existingDocumento.Id,
-                pacienteId = existingDocumento.PacienteId,
-                fileName = existingDocumento.NomeArquivo,
+                documentId = existingDocument.Id,
+                patientId = existingDocument.PatientId,
+                fileName = existingDocument.FileName,
                 message = "Document already processed. Returning cached result.",
-                status = existingDocumento.StatusProcessamento,
-                processedAt = existingDocumento.DataUpload,
-                exames = existingDocumento.Exames.Select(e => new
+                status = existingDocument.ProcessingStatus,
+                processedAt = existingDocument.UploadDate,
+                exams = existingDocument.Exams.Select(e => new
                 {
                     id = e.Id,
-                    tipo = e.TipoExame.Nome,
-                    dataColeta = e.DataColeta,
-                    resultadosCount = e.Resultados.Count
+                    type = e.ExamType.Name,
+                    collectionDate = e.CollectionDate,
+                    resultsCount = e.Results.Count
                 })
             });
         }
@@ -281,23 +281,23 @@ app.MapPost("/api/process-and-save", async (
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
         // 3. Criar documento no banco (sem paciente inicialmente)
-        var documento = new ExamAI.Domain.Entities.Documento
+        var document = new ExamAI.Domain.Entities.Document
         {
             Id = Guid.NewGuid(),
-            NomeArquivo = file.FileName,
-            TipoArquivo = Path.GetExtension(file.FileName),
-            TamanhoBytes = file.Length,
+            FileName = file.FileName,
+            FileType = Path.GetExtension(file.FileName),
+            SizeBytes = file.Length,
             HashSha256 = fileHash,
-            StatusProcessamento = "processing",
-            DataUpload = DateTime.UtcNow,
+            ProcessingStatus = "processing",
+            UploadDate = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
-            PacienteId = null // Será definido após processamento
+            PatientId = null // Será definido após processamento
         };
 
-        dbContext.Documentos.Add(documento);
+        dbContext.Documents.Add(document);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Created documento ID: {DocumentoId}", documento.Id);
+        logger.LogInformation("Created document ID: {DocumentId}", document.Id);
 
         // 4. Processar documento
         using var stream = file.OpenReadStream();
@@ -306,29 +306,29 @@ app.MapPost("/api/process-and-save", async (
         if (!result.Success)
         {
             // Atualizar status para failed
-            documento.StatusProcessamento = "failed";
-            documento.ErroProcessamento = result.ErrorMessage;
+            document.ProcessingStatus = "failed";
+            document.ProcessingError = result.ErrorMessage;
             await dbContext.SaveChangesAsync();
 
             return Results.Json(new
             {
                 success = false,
                 error = result.ErrorMessage,
-                documentoId = documento.Id
+                documentId = document.Id
             }, statusCode: 500);
         }
 
         // 5. Salvar resultado no banco (cria/busca paciente internamente)
-        var pacienteId = await repository.SaveExamAsync(result, documento.Id);
+        var patientId = await repository.SaveExamAsync(result, document.Id);
 
-        logger.LogInformation("Saved exam result for paciente ID: {PacienteId}", pacienteId);
+        logger.LogInformation("Saved exam result for patient ID: {PatientId}", patientId);
 
         return Results.Ok(new
         {
             success = true,
             duplicate = false,
-            documentoId = documento.Id,
-            pacienteId = pacienteId,
+            documentId = document.Id,
+            patientId = patientId,
             fileName = result.FileName,
             fileHash = fileHash,
             data = result.Data,
@@ -341,7 +341,7 @@ app.MapPost("/api/process-and-save", async (
             stats = new
             {
                 duration = result.Stats.Duration.TotalMilliseconds,
-                examesExtracted = result.Stats.ExamesExtracted,
+                examsExtracted = result.Stats.ExtractedExams,
                 validationWarnings = result.Stats.ValidationWarnings
             }
         });
@@ -361,22 +361,22 @@ app.MapPost("/api/process-and-save", async (
 .DisableAntiforgery();
 
 // Endpoint para buscar exames por CPF
-app.MapGet("/api/exams/paciente/{cpf}", async (
+app.MapGet("/api/exams/patient/{cpf}", async (
     string cpf,
     ExamRepository repository,
     ILogger<Program> logger,
-    DateTime? dataInicio = null,
-    DateTime? dataFim = null,
-    string? tipoExame = null) =>
+    DateTime? startDate = null,
+    DateTime? endDate = null,
+    string? examType = null) =>
 {
     try
     {
-        logger.LogInformation("Searching exames for CPF: {CPF}", cpf);
+        logger.LogInformation("Searching exams for CPF: {CPF}", cpf);
 
-        var exames = await repository.GetExamsByPacienteAsync(
-            cpf, dataInicio, dataFim, tipoExame);
+        var exams = await repository.GetExamsByPatientAsync(
+            cpf, startDate, endDate, examType);
 
-        if (exames.Count == 0)
+        if (exams.Count == 0)
         {
             return Results.NotFound(new
             {
@@ -385,37 +385,37 @@ app.MapGet("/api/exams/paciente/{cpf}", async (
             });
         }
 
-        var paciente = exames.First().Documento.Paciente;
+        var patient = exams.First().Document.Patient;
 
         return Results.Ok(new
         {
             success = true,
-            paciente = new
+            patient = new
             {
-                id = paciente.Id,
-                nome = paciente.Nome,
-                cpf = paciente.Cpf,
-                dataNascimento = paciente.DataNascimento
+                id = patient.Id,
+                name = patient.Name,
+                cpf = patient.Cpf,
+                birthDate = patient.BirthDate
             },
-            exames = exames.Select(e => new
+            exams = exams.Select(e => new
             {
                 id = e.Id,
-                tipo = e.TipoExame.Nome,
-                categoria = e.TipoExame.Categoria,
-                dataColeta = e.DataColeta,
-                medicoSolicitante = e.MedicoSolicitante,
-                resultados = e.Resultados.Select(r => new
+                type = e.ExamType.Name,
+                category = e.ExamType.Category,
+                collectionDate = e.CollectionDate,
+                requestingPhysician = e.RequestingPhysician,
+                results = e.Results.Select(r => new
                 {
-                    parametro = r.Parametro,
-                    valor = r.ValorNumerico,
-                    unidade = r.Unidade,
-                    referenciaMin = r.ReferenciaMin,
-                    referenciaMax = r.ReferenciaMax,
+                    parameter = r.Parameter,
+                    value = r.NumericValue,
+                    unit = r.Unit,
+                    referenceMin = r.ReferenceMin,
+                    referenceMax = r.ReferenceMax,
                     status = r.Status,
-                    observacoes = r.Observacoes
+                    observations = r.Observations
                 })
             }),
-            total = exames.Count
+            total = exams.Count
         });
     }
     catch (Exception ex)
@@ -428,39 +428,39 @@ app.MapGet("/api/exams/paciente/{cpf}", async (
         }, statusCode: 500);
     }
 })
-.WithName("GetExamsByPaciente")
+.WithName("GetExamsByPatient")
 .WithTags("Exams");
 
 // Reprocessar Documento Falhado
-app.MapPost("/api/exams/reprocess/{documentoId}", async (
-    Guid documentoId,
+app.MapPost("/api/exams/reprocess/{documentId}", async (
+    Guid documentId,
     MedicalExamPipeline pipeline,
     ExamRepository repository,
     ILogger<Program> logger) =>
 {
     try
     {
-        logger.LogInformation("Reprocessing documento: {DocumentoId}", documentoId);
+        logger.LogInformation("Reprocessing document: {DocumentId}", documentId);
 
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
         // Buscar documento
-        var documento = await dbContext.Documentos
-            .Include(d => d.Paciente)
-            .FirstOrDefaultAsync(d => d.Id == documentoId);
+        var document = await dbContext.Documents
+            .Include(d => d.Patient)
+            .FirstOrDefaultAsync(d => d.Id == documentId);
 
-        if (documento == null)
+        if (document == null)
         {
             return Results.NotFound(new { success = false, error = "Document not found" });
         }
 
-        logger.LogInformation("Found documento: {FileName}, Current status: {Status}", 
-            documento.NomeArquivo, documento.StatusProcessamento);
+        logger.LogInformation("Found document: {FileName}, Current status: {Status}", 
+            document.FileName, document.ProcessingStatus);
 
         // Atualizar status para processing
-        documento.StatusProcessamento = "processing";
-        documento.ErroProcessamento = null;
+        document.ProcessingStatus = "processing";
+        document.ProcessingError = null;
         await dbContext.SaveChangesAsync();
 
         // Nota: Como não temos o arquivo original em disco, 
@@ -471,14 +471,14 @@ app.MapPost("/api/exams/reprocess/{documentoId}", async (
         {
             success = false,
             error = "Cannot reprocess: original file not stored. Please re-upload the document.",
-            documentoId = documento.Id,
-            fileName = documento.NomeArquivo,
-            suggestion = "Use DELETE /api/exams/{documentoId} to remove failed document, then upload again"
+            documentId = document.Id,
+            fileName = document.FileName,
+            suggestion = "Use DELETE /api/exams/{documentId} to remove failed document, then upload again"
         });
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error reprocessing documento: {DocumentoId}", documentoId);
+        logger.LogError(ex, "Error reprocessing document: {DocumentId}", documentId);
         return Results.Json(new
         {
             success = false,
@@ -490,45 +490,45 @@ app.MapPost("/api/exams/reprocess/{documentoId}", async (
 .WithTags("Exams");
 
 // Deletar Documento
-app.MapDelete("/api/exams/{documentoId}", async (
-    Guid documentoId,
+app.MapDelete("/api/exams/{documentId}", async (
+    Guid documentId,
     ILogger<Program> logger) =>
 {
     try
     {
-        logger.LogInformation("Deleting documento: {DocumentoId}", documentoId);
+        logger.LogInformation("Deleting document: {DocumentId}", documentId);
 
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
-        var documento = await dbContext.Documentos
-            .Include(d => d.Exames)
-                .ThenInclude(e => e.Resultados)
-            .FirstOrDefaultAsync(d => d.Id == documentoId);
+        var document = await dbContext.Documents
+            .Include(d => d.Exams)
+                .ThenInclude(e => e.Results)
+            .FirstOrDefaultAsync(d => d.Id == documentId);
 
-        if (documento == null)
+        if (document == null)
         {
             return Results.NotFound(new { success = false, error = "Document not found" });
         }
 
         // Deletar em cascata (devido ao relacionamento configurado)
-        dbContext.Documentos.Remove(documento);
+        dbContext.Documents.Remove(document);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Deleted documento: {DocumentoId}, File: {FileName}", 
-            documentoId, documento.NomeArquivo);
+        logger.LogInformation("Deleted document: {DocumentId}, File: {FileName}", 
+            documentId, document.FileName);
 
         return Results.Ok(new
         {
             success = true,
             message = "Document deleted successfully",
-            documentoId = documentoId,
-            fileName = documento.NomeArquivo
+            documentId = documentId,
+            fileName = document.FileName
         });
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error deleting documento: {DocumentoId}", documentoId);
+        logger.LogError(ex, "Error deleting document: {DocumentId}", documentId);
         return Results.Json(new
         {
             success = false,

@@ -9,140 +9,140 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<Paciente> Pacientes { get; set; } = null!;
-    public DbSet<Documento> Documentos { get; set; } = null!;
-    public DbSet<TipoExame> TiposExame { get; set; } = null!;
-    public DbSet<Exame> Exames { get; set; } = null!;
-    public DbSet<ResultadoExame> ResultadosExame { get; set; } = null!;
+    public DbSet<Patient> Patients { get; set; } = null!;
+    public DbSet<Document> Documents { get; set; } = null!;
+    public DbSet<ExamType> ExamTypes { get; set; } = null!;
+    public DbSet<Exam> Exams { get; set; } = null!;
+    public DbSet<ExamResult> ExamResults { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configuração de Paciente
-        modelBuilder.Entity<Paciente>(entity =>
+        // Configuração de Patient
+        modelBuilder.Entity<Patient>(entity =>
         {
-            entity.ToTable("pacientes");
+            entity.ToTable("patients");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(255).IsRequired();
-            entity.Property(e => e.DataNascimento).HasColumnName("data_nascimento");
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.BirthDate).HasColumnName("birth_date");
             entity.Property(e => e.Cpf).HasColumnName("cpf").HasMaxLength(11);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasIndex(e => e.Cpf).IsUnique();
-            entity.HasIndex(e => e.Nome);
+            entity.HasIndex(e => e.Name);
         });
 
-        // Configuração de Documento
-        modelBuilder.Entity<Documento>(entity =>
+        // Configuração de Document
+        modelBuilder.Entity<Document>(entity =>
         {
-            entity.ToTable("documentos");
+            entity.ToTable("documents");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.PacienteId).HasColumnName("paciente_id");
-            entity.Property(e => e.NomeArquivo).HasColumnName("nome_arquivo").HasMaxLength(500).IsRequired();
-            entity.Property(e => e.TipoArquivo).HasColumnName("tipo_arquivo").HasMaxLength(50).IsRequired();
-            entity.Property(e => e.TamanhoBytes).HasColumnName("tamanho_bytes");
+            entity.Property(e => e.PatientId).HasColumnName("patient_id");
+            entity.Property(e => e.FileName).HasColumnName("file_name").HasMaxLength(500).IsRequired();
+            entity.Property(e => e.FileType).HasColumnName("file_type").HasMaxLength(50).IsRequired();
+            entity.Property(e => e.SizeBytes).HasColumnName("size_bytes");
             entity.Property(e => e.HashSha256).HasColumnName("hash_sha256").HasMaxLength(64).IsRequired();
-            entity.Property(e => e.DataUpload).HasColumnName("data_upload").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.StatusProcessamento).HasColumnName("status_processamento").HasMaxLength(50).HasDefaultValue("pending");
-            entity.Property(e => e.ErroProcessamento).HasColumnName("erro_processamento");
+            entity.Property(e => e.UploadDate).HasColumnName("upload_date").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.ProcessingStatus).HasColumnName("processing_status").HasMaxLength(50).HasDefaultValue("pending");
+            entity.Property(e => e.ProcessingError).HasColumnName("processing_error");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasOne(e => e.Paciente)
-                .WithMany(p => p.Documentos)
-                .HasForeignKey(e => e.PacienteId)
+            entity.HasOne(e => e.Patient)
+                .WithMany(p => p.Documents)
+                .HasForeignKey(e => e.PatientId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasIndex(e => e.PacienteId);
+            entity.HasIndex(e => e.PatientId);
             entity.HasIndex(e => e.HashSha256);
-            entity.HasIndex(e => e.StatusProcessamento);
+            entity.HasIndex(e => e.ProcessingStatus);
         });
 
-        // Configuração de TipoExame
-        modelBuilder.Entity<TipoExame>(entity =>
+        // Configuração de ExamType
+        modelBuilder.Entity<ExamType>(entity =>
         {
-            entity.ToTable("tipos_exame");
+            entity.ToTable("exam_types");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Nome).HasColumnName("nome").HasMaxLength(255).IsRequired();
-            entity.Property(e => e.Descricao).HasColumnName("descricao");
-            entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(100);
+            entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Category).HasColumnName("category").HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasIndex(e => e.Nome).IsUnique();
-            entity.HasIndex(e => e.Categoria);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Category);
 
             // Seed data - Usar data fixa para evitar problemas com migrations
             var seedDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
             entity.HasData(
-                new TipoExame { Id = 1, Nome = "Hemograma Completo", Categoria = "Hematologia", CreatedAt = seedDate },
-                new TipoExame { Id = 2, Nome = "Glicemia", Categoria = "Bioquímica", CreatedAt = seedDate },
-                new TipoExame { Id = 3, Nome = "Colesterol Total", Categoria = "Lipidograma", CreatedAt = seedDate },
-                new TipoExame { Id = 4, Nome = "HDL", Categoria = "Lipidograma", CreatedAt = seedDate },
-                new TipoExame { Id = 5, Nome = "LDL", Categoria = "Lipidograma", CreatedAt = seedDate },
-                new TipoExame { Id = 6, Nome = "Triglicerídeos", Categoria = "Lipidograma", CreatedAt = seedDate },
-                new TipoExame { Id = 7, Nome = "Ureia", Categoria = "Função Renal", CreatedAt = seedDate },
-                new TipoExame { Id = 8, Nome = "Creatinina", Categoria = "Função Renal", CreatedAt = seedDate },
-                new TipoExame { Id = 9, Nome = "TGO/AST", Categoria = "Função Hepática", CreatedAt = seedDate },
-                new TipoExame { Id = 10, Nome = "TGP/ALT", Categoria = "Função Hepática", CreatedAt = seedDate }
+                new ExamType { Id = 1, Name = "Hemograma Completo", Category = "Hematologia", CreatedAt = seedDate },
+                new ExamType { Id = 2, Name = "Glicemia", Category = "Bioquímica", CreatedAt = seedDate },
+                new ExamType { Id = 3, Name = "Colesterol Total", Category = "Lipidograma", CreatedAt = seedDate },
+                new ExamType { Id = 4, Name = "HDL", Category = "Lipidograma", CreatedAt = seedDate },
+                new ExamType { Id = 5, Name = "LDL", Category = "Lipidograma", CreatedAt = seedDate },
+                new ExamType { Id = 6, Name = "Triglicerídeos", Category = "Lipidograma", CreatedAt = seedDate },
+                new ExamType { Id = 7, Name = "Ureia", Category = "Função Renal", CreatedAt = seedDate },
+                new ExamType { Id = 8, Name = "Creatinina", Category = "Função Renal", CreatedAt = seedDate },
+                new ExamType { Id = 9, Name = "TGO/AST", Category = "Função Hepática", CreatedAt = seedDate },
+                new ExamType { Id = 10, Name = "TGP/ALT", Category = "Função Hepática", CreatedAt = seedDate }
             );
         });
 
-        // Configuração de Exame
-        modelBuilder.Entity<Exame>(entity =>
+        // Configuração de Exam
+        modelBuilder.Entity<Exam>(entity =>
         {
-            entity.ToTable("exames");
+            entity.ToTable("exams");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.DocumentoId).HasColumnName("documento_id");
-            entity.Property(e => e.TipoExameId).HasColumnName("tipo_exame_id");
-            entity.Property(e => e.DataColeta).HasColumnName("data_coleta");
-            entity.Property(e => e.MedicoSolicitante).HasColumnName("medico_solicitante").HasMaxLength(255);
-            entity.Property(e => e.Laboratorio).HasColumnName("laboratorio").HasMaxLength(255);
+            entity.Property(e => e.DocumentId).HasColumnName("document_id");
+            entity.Property(e => e.ExamTypeId).HasColumnName("exam_type_id");
+            entity.Property(e => e.CollectionDate).HasColumnName("collection_date");
+            entity.Property(e => e.RequestingPhysician).HasColumnName("requesting_physician").HasMaxLength(255);
+            entity.Property(e => e.Laboratory).HasColumnName("laboratory").HasMaxLength(255);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasOne(e => e.Documento)
-                .WithMany(d => d.Exames)
-                .HasForeignKey(e => e.DocumentoId)
+            entity.HasOne(e => e.Document)
+                .WithMany(d => d.Exams)
+                .HasForeignKey(e => e.DocumentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(e => e.TipoExame)
-                .WithMany(t => t.Exames)
-                .HasForeignKey(e => e.TipoExameId)
+            entity.HasOne(e => e.ExamType)
+                .WithMany(t => t.Exams)
+                .HasForeignKey(e => e.ExamTypeId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            entity.HasIndex(e => e.DocumentoId);
-            entity.HasIndex(e => e.TipoExameId);
-            entity.HasIndex(e => e.DataColeta);
+            entity.HasIndex(e => e.DocumentId);
+            entity.HasIndex(e => e.ExamTypeId);
+            entity.HasIndex(e => e.CollectionDate);
         });
 
-        // Configuração de ResultadoExame
-        modelBuilder.Entity<ResultadoExame>(entity =>
+        // Configuração de ExamResult
+        modelBuilder.Entity<ExamResult>(entity =>
         {
-            entity.ToTable("resultados_exame");
+            entity.ToTable("exam_results");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.ExameId).HasColumnName("exame_id");
-            entity.Property(e => e.Parametro).HasColumnName("parametro").HasMaxLength(255).IsRequired();
-            entity.Property(e => e.ValorNumerico).HasColumnName("valor_numerico").HasPrecision(18, 4);
-            entity.Property(e => e.ValorTexto).HasColumnName("valor_texto");
-            entity.Property(e => e.Unidade).HasColumnName("unidade").HasMaxLength(50);
-            entity.Property(e => e.ReferenciaMin).HasColumnName("referencia_min").HasPrecision(18, 4);
-            entity.Property(e => e.ReferenciaMax).HasColumnName("referencia_max").HasPrecision(18, 4);
+            entity.Property(e => e.ExamId).HasColumnName("exam_id");
+            entity.Property(e => e.Parameter).HasColumnName("parameter").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.NumericValue).HasColumnName("numeric_value").HasPrecision(18, 4);
+            entity.Property(e => e.TextValue).HasColumnName("text_value");
+            entity.Property(e => e.Unit).HasColumnName("unit").HasMaxLength(50);
+            entity.Property(e => e.ReferenceMin).HasColumnName("reference_min").HasPrecision(18, 4);
+            entity.Property(e => e.ReferenceMax).HasColumnName("reference_max").HasPrecision(18, 4);
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(50);
-            entity.Property(e => e.Observacoes).HasColumnName("observacoes");
+            entity.Property(e => e.Observations).HasColumnName("observations");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasOne(e => e.Exame)
-                .WithMany(ex => ex.Resultados)
-                .HasForeignKey(e => e.ExameId)
+            entity.HasOne(e => e.Exam)
+                .WithMany(ex => ex.Results)
+                .HasForeignKey(e => e.ExamId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasIndex(e => e.ExameId);
-            entity.HasIndex(e => e.Parametro);
+            entity.HasIndex(e => e.ExamId);
+            entity.HasIndex(e => e.Parameter);
             entity.HasIndex(e => e.Status);
         });
     }

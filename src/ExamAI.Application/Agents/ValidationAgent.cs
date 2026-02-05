@@ -10,7 +10,7 @@ namespace ExamAI.Application.Agents;
 public class ValidationAgent
 {
     private readonly ILogger<ValidationAgent> _logger;
-    private static readonly string[] ValidStatuses = { "normal", "baixo", "alto", "crítico" };
+    private static readonly string[] ValidStatuses = { "normal", "low", "high", "critical" };
 
     public ValidationAgent(ILogger<ValidationAgent> logger)
     {
@@ -30,25 +30,25 @@ public class ValidationAgent
         _logger.LogInformation("Starting validation of extraction result");
 
         // Validar dados do paciente
-        if (extractionResult.Paciente != null)
+        if (extractionResult.Patient != null)
         {
-            ValidatePaciente(extractionResult.Paciente, result);
+            ValidatePatient(extractionResult.Patient, result);
         }
         else
         {
-            result.AddWarning("paciente", "Nenhuma informação de paciente foi extraída");
+            result.AddWarning("patient", "No patient information was extracted");
         }
 
         // Validar exames
-        if (extractionResult.Exames == null || extractionResult.Exames.Count == 0)
+        if (extractionResult.Exams == null || extractionResult.Exams.Count == 0)
         {
-            result.AddWarning("exames", "Nenhum exame foi extraído do documento");
+            result.AddWarning("exams", "No exams were extracted from the document");
         }
         else
         {
-            for (int i = 0; i < extractionResult.Exames.Count; i++)
+            for (int i = 0; i < extractionResult.Exams.Count; i++)
             {
-                ValidateExame(extractionResult.Exames[i], i, result);
+                ValidateExam(extractionResult.Exams[i], i, result);
             }
         }
 
@@ -71,161 +71,161 @@ public class ValidationAgent
         return result;
     }
 
-    private void ValidatePaciente(PacienteInfo paciente, ValidationResult result)
+    private void ValidatePatient(PatientInfo patient, ValidationResult result)
     {
         // Validar nome
-        if (string.IsNullOrWhiteSpace(paciente.Nome))
+        if (string.IsNullOrWhiteSpace(patient.Name))
         {
-            result.AddWarning("paciente.nome", "Nome do paciente está vazio");
+            result.AddWarning("patient.name", "Patient name is empty");
         }
-        else if (paciente.Nome.Length < 3)
+        else if (patient.Name.Length < 3)
         {
-            result.AddWarning("paciente.nome", "Nome do paciente muito curto", paciente.Nome);
+            result.AddWarning("patient.name", "Patient name is too short", patient.Name);
         }
 
         // Validar data de nascimento (formato)
-        if (!string.IsNullOrWhiteSpace(paciente.DataNascimento))
+        if (!string.IsNullOrWhiteSpace(patient.BirthDate))
         {
-            if (!IsValidDate(paciente.DataNascimento))
+            if (!IsValidDate(patient.BirthDate))
             {
                 result.AddWarning(
-                    "paciente.data_nascimento",
-                    "Data de nascimento em formato inválido (esperado: YYYY-MM-DD)",
-                    paciente.DataNascimento);
+                    "patient.birth_date",
+                    "Birth date in invalid format (expected: YYYY-MM-DD)",
+                    patient.BirthDate);
             }
         }
 
         // Validar data de coleta (formato)
-        if (!string.IsNullOrWhiteSpace(paciente.DataColeta))
+        if (!string.IsNullOrWhiteSpace(patient.CollectionDate))
         {
-            if (!IsValidDate(paciente.DataColeta))
+            if (!IsValidDate(patient.CollectionDate))
             {
                 result.AddWarning(
-                    "paciente.data_coleta",
-                    "Data de coleta em formato inválido (esperado: YYYY-MM-DD)",
-                    paciente.DataColeta);
+                    "patient.collection_date",
+                    "Collection date in invalid format (expected: YYYY-MM-DD)",
+                    patient.CollectionDate);
             }
         }
         else
         {
-            result.AddWarning("paciente.data_coleta", "Data de coleta não foi informada");
+            result.AddWarning("patient.collection_date", "Collection date was not provided");
         }
 
         // Validar médico solicitante
-        if (string.IsNullOrWhiteSpace(paciente.MedicoSolicitante))
+        if (string.IsNullOrWhiteSpace(patient.RequestingPhysician))
         {
-            result.AddWarning("paciente.medico_solicitante", "Médico solicitante não foi informado");
+            result.AddWarning("patient.requesting_physician", "Requesting physician was not provided");
         }
     }
 
-    private void ValidateExame(ExameInfo exame, int index, ValidationResult result)
+    private void ValidateExam(ExamInfo exam, int index, ValidationResult result)
     {
-        var prefix = $"exames[{index}]";
+        var prefix = $"exams[{index}]";
 
         // Validar tipo do exame
-        if (string.IsNullOrWhiteSpace(exame.Tipo))
+        if (string.IsNullOrWhiteSpace(exam.Type))
         {
-            result.AddWarning($"{prefix}.tipo", "Tipo do exame está vazio");
+            result.AddWarning($"{prefix}.type", "Exam type is empty");
         }
-        else if (exame.Tipo.Length < 3)
+        else if (exam.Type.Length < 3)
         {
-            result.AddWarning($"{prefix}.tipo", "Tipo do exame muito curto", exame.Tipo);
+            result.AddWarning($"{prefix}.type", "Exam type is too short", exam.Type);
         }
 
         // Validar valor numérico
-        if (exame.Valor.HasValue)
+        if (exam.Value.HasValue)
         {
-            if (exame.Valor.Value < 0)
+            if (exam.Value.Value < 0)
             {
                 result.AddWarning(
-                    $"{prefix}.valor",
-                    "Valor numérico negativo pode ser inválido",
-                    exame.Valor.Value.ToString());
+                    $"{prefix}.value",
+                    "Negative numeric value may be invalid",
+                    exam.Value.Value.ToString());
             }
 
-            if (exame.Valor.Value > 1000000)
+            if (exam.Value.Value > 1000000)
             {
                 result.AddWarning(
-                    $"{prefix}.valor",
-                    "Valor numérico muito alto pode ser erro de extração",
-                    exame.Valor.Value.ToString());
+                    $"{prefix}.value",
+                    "Very high numeric value may be an extraction error",
+                    exam.Value.Value.ToString());
             }
         }
         else
         {
-            result.AddWarning($"{prefix}.valor", "Valor do exame não foi informado");
+            result.AddWarning($"{prefix}.value", "Exam value was not provided");
         }
 
         // Validar unidade
-        if (string.IsNullOrWhiteSpace(exame.Unidade))
+        if (string.IsNullOrWhiteSpace(exam.Unit))
         {
-            result.AddWarning($"{prefix}.unidade", "Unidade de medida não foi informada");
+            result.AddWarning($"{prefix}.unit", "Measurement unit was not provided");
         }
 
         // Validar referências (se uma existe, a outra deveria existir)
-        if (exame.ReferenciaMin.HasValue && !exame.ReferenciaMax.HasValue)
+        if (exam.ReferenceMin.HasValue && !exam.ReferenceMax.HasValue)
         {
             result.AddWarning(
-                $"{prefix}.referencia",
-                "Referência mínima informada mas máxima ausente");
+                $"{prefix}.reference",
+                "Minimum reference provided but maximum is missing");
         }
 
-        if (!exame.ReferenciaMin.HasValue && exame.ReferenciaMax.HasValue)
+        if (!exam.ReferenceMin.HasValue && exam.ReferenceMax.HasValue)
         {
             result.AddWarning(
-                $"{prefix}.referencia",
-                "Referência máxima informada mas mínima ausente");
+                $"{prefix}.reference",
+                "Maximum reference provided but minimum is missing");
         }
 
         // Validar lógica das referências
-        if (exame.ReferenciaMin.HasValue && exame.ReferenciaMax.HasValue)
+        if (exam.ReferenceMin.HasValue && exam.ReferenceMax.HasValue)
         {
-            if (exame.ReferenciaMin.Value > exame.ReferenciaMax.Value)
+            if (exam.ReferenceMin.Value > exam.ReferenceMax.Value)
             {
                 result.AddWarning(
-                    $"{prefix}.referencia",
-                    "Referência mínima maior que máxima",
-                    $"min: {exame.ReferenciaMin}, max: {exame.ReferenciaMax}");
+                    $"{prefix}.reference",
+                    "Minimum reference is greater than maximum",
+                    $"min: {exam.ReferenceMin}, max: {exam.ReferenceMax}");
             }
         }
 
         // Validar status
-        if (!string.IsNullOrWhiteSpace(exame.Status))
+        if (!string.IsNullOrWhiteSpace(exam.Status))
         {
-            var normalizedStatus = exame.Status.ToLower().Trim();
+            var normalizedStatus = exam.Status.ToLower().Trim();
             if (!ValidStatuses.Contains(normalizedStatus))
             {
                 result.AddWarning(
                     $"{prefix}.status",
-                    $"Status inválido (permitidos: {string.Join(", ", ValidStatuses)})",
-                    exame.Status);
+                    $"Invalid status (allowed: {string.Join(", ", ValidStatuses)})",
+                    exam.Status);
             }
         }
 
         // Validar consistência: status vs valor vs referência
-        if (exame.Valor.HasValue && 
-            exame.ReferenciaMin.HasValue && 
-            exame.ReferenciaMax.HasValue &&
-            !string.IsNullOrWhiteSpace(exame.Status))
+        if (exam.Value.HasValue && 
+            exam.ReferenceMin.HasValue && 
+            exam.ReferenceMax.HasValue &&
+            !string.IsNullOrWhiteSpace(exam.Status))
         {
-            var normalizedStatus = exame.Status.ToLower().Trim();
-            var isInRange = exame.Valor.Value >= exame.ReferenciaMin.Value && 
-                           exame.Valor.Value <= exame.ReferenciaMax.Value;
+            var normalizedStatus = exam.Status.ToLower().Trim();
+            var isInRange = exam.Value.Value >= exam.ReferenceMin.Value && 
+                           exam.Value.Value <= exam.ReferenceMax.Value;
 
             if (isInRange && normalizedStatus != "normal")
             {
                 result.AddWarning(
                     $"{prefix}.status",
-                    "Valor dentro da referência mas status não é 'normal'",
-                    $"valor: {exame.Valor}, status: {exame.Status}");
+                    "Value is within reference but status is not 'normal'",
+                    $"value: {exam.Value}, status: {exam.Status}");
             }
 
             if (!isInRange && normalizedStatus == "normal")
             {
                 result.AddWarning(
                     $"{prefix}.status",
-                    "Valor fora da referência mas status é 'normal'",
-                    $"valor: {exame.Valor}, status: {exame.Status}");
+                    "Value is outside reference but status is 'normal'",
+                    $"value: {exam.Value}, status: {exam.Status}");
             }
         }
     }
@@ -245,52 +245,5 @@ public class ValidationAgent
 
         // Tentar parsear
         return DateTime.TryParse(date, out _);
-    }
-
-    /// <summary>
-    /// Valida CPF (formato e dígitos verificadores)
-    /// </summary>
-    public bool IsValidCpf(string? cpf)
-    {
-        if (string.IsNullOrWhiteSpace(cpf))
-            return false;
-
-        // Remover formatação
-        cpf = Regex.Replace(cpf, @"[^\d]", "");
-
-        // CPF deve ter 11 dígitos
-        if (cpf.Length != 11)
-            return false;
-
-        // CPF não pode ter todos os dígitos iguais
-        if (cpf.Distinct().Count() == 1)
-            return false;
-
-        // Validar dígitos verificadores
-        var multiplicador1 = new[] { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-        var multiplicador2 = new[] { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
-
-        var tempCpf = cpf.Substring(0, 9);
-        var soma = 0;
-
-        for (int i = 0; i < 9; i++)
-            soma += int.Parse(tempCpf[i].ToString()) * multiplicador1[i];
-
-        var resto = soma % 11;
-        resto = resto < 2 ? 0 : 11 - resto;
-
-        var digito = resto.ToString();
-        tempCpf = tempCpf + digito;
-        soma = 0;
-
-        for (int i = 0; i < 10; i++)
-            soma += int.Parse(tempCpf[i].ToString()) * multiplicador2[i];
-
-        resto = soma % 11;
-        resto = resto < 2 ? 0 : 11 - resto;
-
-        digito = digito + resto.ToString();
-
-        return cpf.EndsWith(digito);
     }
 }
