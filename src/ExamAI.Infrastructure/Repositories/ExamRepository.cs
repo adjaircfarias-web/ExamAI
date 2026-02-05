@@ -26,85 +26,85 @@ public class ExamRepository
     /// Salva o resultado de um exame processado (transação atômica)
     /// </summary>
     public async Task<Guid> SaveExamAsync(
-        ExamResult examResult,
-        Guid documentoId,
+        PipelineResult pipelineResult,
+        Guid documentId,
         CancellationToken cancellationToken = default)
     {
-        if (examResult == null)
-            throw new ArgumentNullException(nameof(examResult));
+        if (pipelineResult == null)
+            throw new ArgumentNullException(nameof(pipelineResult));
 
-        if (examResult.Data == null)
-            throw new ArgumentException("ExamResult.Data cannot be null", nameof(examResult));
+        if (pipelineResult.Data == null)
+            throw new ArgumentException("PipelineResult.Data cannot be null", nameof(pipelineResult));
 
-        _logger.LogInformation("Saving exam result for documento ID: {DocumentoId}", documentoId);
+        _logger.LogInformation("Saving exam result for document ID: {DocumentId}", documentId);
 
         using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
             // 1. Buscar ou criar paciente
-            var paciente = await GetOrCreatePacienteAsync(
-                examResult.Data.Paciente,
+            var patient = await GetOrCreatePatientAsync(
+                pipelineResult.Data.Patient,
                 cancellationToken);
 
-            _logger.LogDebug("Paciente ID: {PacienteId}", paciente.Id);
+            _logger.LogDebug("Patient ID: {PatientId}", patient.Id);
 
-            // 2. Atualizar documento com paciente_id
-            var documento = await _context.Documentos.FindAsync(new object[] { documentoId }, cancellationToken);
-            if (documento == null)
+            // 2. Atualizar documento com patient_id
+            var document = await _context.Documents.FindAsync(new object[] { documentId }, cancellationToken);
+            if (document == null)
             {
-                throw new InvalidOperationException($"Documento ID {documentoId} not found");
+                throw new InvalidOperationException($"Document ID {documentId} not found");
             }
 
-            documento.PacienteId = paciente.Id;
-            documento.StatusProcessamento = "completed";
+            document.PatientId = patient.Id;
+            document.ProcessingStatus = "completed";
 
             // 3. Salvar exames
             var examIds = new List<Guid>();
 
-            if (examResult.Data.Exames != null && examResult.Data.Exames.Count > 0)
+            if (pipelineResult.Data.Exams != null && pipelineResult.Data.Exams.Count > 0)
             {
-                foreach (var exameInfo in examResult.Data.Exames)
+                foreach (var examInfo in pipelineResult.Data.Exams)
                 {
                     // Buscar ou criar tipo de exame
-                    var tipoExame = await GetOrCreateTipoExameAsync(
-                        exameInfo.Tipo,
+                    var examType = await GetOrCreateExamTypeAsync(
+                        examInfo.Type,
                         cancellationToken);
 
                     // Criar exame
-                    var exame = new Exame
+                    var exam = new Exam
                     {
                         Id = Guid.NewGuid(),
-                        DocumentoId = documentoId,
-                        TipoExameId = tipoExame.Id,
-                        DataColeta = ParseDateOrDefault(examResult.Data.Paciente?.DataColeta),
-                        MedicoSolicitante = examResult.Data.Paciente?.MedicoSolicitante
+                        DocumentId = documentId,
+                        ExamTypeId = examType.Id,
+                        CollectionDate = ParseDateOrDefault(pipelineResult.Data.Patient?.CollectionDate),
+                        RequestingPhysician = pipelineResult.Data.Patient?.RequestingPhysician
                     };
 
-                    _context.Exames.Add(exame);
-                    examIds.Add(exame.Id);
+                    _context.Exams.Add(exam);
+                    examIds.Add(exam.Id);
 
                     // Criar resultado do exame
-                    var resultado = new ResultadoExame
+                    var result = new ExamResult
                     {
                         Id = Guid.NewGuid(),
-                        ExameId = exame.Id,
-                        Parametro = exameInfo.Tipo,
-                        ValorNumerico = exameInfo.Valor,
-                        Unidade = exameInfo.Unidade,
-                        ReferenciaMin = exameInfo.ReferenciaMin,
-                        ReferenciaMax = exameInfo.ReferenciaMax,
-                        Status = exameInfo.Status,
-                        Observacoes = exameInfo.Observacoes
+                        ExamId = exam.Id,
+                        Parameter = examInfo.Type,
+                        NumericValue = examInfo.Value,
+                        Unit = examInfo.Unit,
+                        ReferenceMin = examInfo.ReferenceMin,
+                        ReferenceMax = examInfo.ReferenceMax,
+                        Status = examInfo.Status,
+                        Observations = examInfo.Observations
                     };
 
-                    _context.ResultadosExame.Add(resultado);
+                    _context.ExamResults.Add(result);
 
                     _logger.LogDebug(
-                        "Created exame: {Tipo}, valor: {Valor} {Unidade}",
-                        exameInfo.Tipo,
-                        exameInfo.Valor,
-                        exameInfo.Unidade);
+                        "Created exam: {Type}, value: {Value} {Unit}",
+                        examInfo.Type,
+                        examInfo.Value,
+                        examInfo.Unit);
                 }
             }
 
@@ -113,15 +113,15 @@ public class ExamRepository
             await transaction.CommitAsync(cancellationToken);
 
             _logger.LogInformation(
-                "Successfully saved {ExameCount} exames for documento {DocumentoId}",
+                "Successfully saved {ExamCount} exams for document {DocumentId}",
                 examIds.Count,
-                documentoId);
+                documentId);
 
-            return paciente.Id;
+            return patient.Id;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save exam result for documento {DocumentoId}", documentoId);
+            _logger.LogError(ex, "Failed to save exam result for document {DocumentId}", documentId);
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
@@ -130,166 +130,166 @@ public class ExamRepository
     /// <summary>
     /// Busca exames de um paciente por CPF
     /// </summary>
-    public async Task<List<Exame>> GetExamsByPacienteAsync(
+    public async Task<List<Exam>> GetExamsByPatientAsync(
         string cpf,
-        DateTime? dataInicio = null,
-        DateTime? dataFim = null,
-        string? tipoExame = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string? examType = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(cpf))
             throw new ArgumentException("CPF cannot be empty", nameof(cpf));
 
-        _logger.LogInformation("Searching exames for CPF: {CPF}", cpf);
+        _logger.LogInformation("Searching exams for CPF: {CPF}", cpf);
 
         // Remover formatação do CPF
         cpf = cpf.Replace(".", "").Replace("-", "").Trim();
 
-        var query = _context.Exames
-            .Include(e => e.Documento)
-                .ThenInclude(d => d.Paciente)
-            .Include(e => e.TipoExame)
-            .Include(e => e.Resultados)
-            .Where(e => e.Documento.Paciente != null && e.Documento.Paciente.Cpf == cpf);
+        var query = _context.Exams
+            .Include(e => e.Document)
+                .ThenInclude(d => d.Patient)
+            .Include(e => e.ExamType)
+            .Include(e => e.Results)
+            .Where(e => e.Document.Patient != null && e.Document.Patient.Cpf == cpf);
 
         // Filtros opcionais
-        if (dataInicio.HasValue)
+        if (startDate.HasValue)
         {
-            query = query.Where(e => e.DataColeta >= dataInicio.Value);
+            query = query.Where(e => e.CollectionDate >= startDate.Value);
         }
 
-        if (dataFim.HasValue)
+        if (endDate.HasValue)
         {
-            query = query.Where(e => e.DataColeta <= dataFim.Value);
+            query = query.Where(e => e.CollectionDate <= endDate.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(tipoExame))
+        if (!string.IsNullOrWhiteSpace(examType))
         {
-            query = query.Where(e => e.TipoExame.Nome.Contains(tipoExame));
+            query = query.Where(e => e.ExamType.Name.Contains(examType));
         }
 
-        var exames = await query
-            .OrderByDescending(e => e.DataColeta)
+        var exams = await query
+            .OrderByDescending(e => e.CollectionDate)
             .ToListAsync(cancellationToken);
 
-        _logger.LogInformation("Found {ExameCount} exames for CPF: {CPF}", exames.Count, cpf);
+        _logger.LogInformation("Found {ExamCount} exams for CPF: {CPF}", exams.Count, cpf);
 
-        return exames;
+        return exams;
     }
 
     /// <summary>
     /// Verifica se um documento com o hash já existe
     /// </summary>
-    public async Task<Domain.Entities.Documento?> FindDocumentoByHashAsync(
+    public async Task<Document?> FindDocumentByHashAsync(
         string hashSha256,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(hashSha256))
             throw new ArgumentException("Hash cannot be empty", nameof(hashSha256));
 
-        _logger.LogDebug("Searching for documento with hash: {Hash}", hashSha256);
+        _logger.LogDebug("Searching for document with hash: {Hash}", hashSha256);
 
-        var documento = await _context.Documentos
-            .Include(d => d.Paciente)
-            .Include(d => d.Exames)
-                .ThenInclude(e => e.TipoExame)
-            .Include(d => d.Exames)
-                .ThenInclude(e => e.Resultados)
+        var document = await _context.Documents
+            .Include(d => d.Patient)
+            .Include(d => d.Exams)
+                .ThenInclude(e => e.ExamType)
+            .Include(d => d.Exams)
+                .ThenInclude(e => e.Results)
             .FirstOrDefaultAsync(d => d.HashSha256 == hashSha256, cancellationToken);
 
-        if (documento != null)
+        if (document != null)
         {
             _logger.LogInformation(
-                "Found existing documento with hash {Hash}: ID {DocumentoId}, Status {Status}",
+                "Found existing document with hash {Hash}: ID {DocumentId}, Status {Status}",
                 hashSha256,
-                documento.Id,
-                documento.StatusProcessamento);
+                document.Id,
+                document.ProcessingStatus);
         }
 
-        return documento;
+        return document;
     }
 
     /// <summary>
     /// Busca ou cria um paciente
     /// </summary>
-    private async Task<Paciente> GetOrCreatePacienteAsync(
-        PacienteInfo? pacienteInfo,
+    private async Task<Patient> GetOrCreatePatientAsync(
+        PatientInfo? patientInfo,
         CancellationToken cancellationToken)
     {
         // Define nome padrão se não identificado
-        var nomePaciente = string.IsNullOrWhiteSpace(pacienteInfo?.Nome) 
-            ? "Paciente não identificado" 
-            : pacienteInfo.Nome;
+        var patientName = string.IsNullOrWhiteSpace(patientInfo?.Name) 
+            ? "Unidentified patient" 
+            : patientInfo.Name;
 
         // Tentar buscar paciente existente por nome (simplificado)
         // Em produção, seria melhor usar CPF se disponível
-        var pacienteExistente = await _context.Pacientes
+        var existingPatient = await _context.Patients
             .FirstOrDefaultAsync(
-                p => p.Nome != null && p.Nome == nomePaciente,
+                p => p.Name != null && p.Name == patientName,
                 cancellationToken);
 
-        if (pacienteExistente != null)
+        if (existingPatient != null)
         {
-            _logger.LogDebug("Found existing paciente: {Nome}", nomePaciente);
-            return pacienteExistente;
+            _logger.LogDebug("Found existing patient: {Name}", patientName);
+            return existingPatient;
         }
 
         // Criar novo paciente
-        var novoPaciente = new Paciente
+        var newPatient = new Patient
         {
             Id = Guid.NewGuid(),
-            Nome = nomePaciente,
+            Name = patientName,
             Cpf = null, // CPF não identificado ou não extraído
-            DataNascimento = ParseDateOrDefault(pacienteInfo?.DataNascimento)
+            BirthDate = ParseDateOrDefault(patientInfo?.BirthDate)
         };
 
-        _context.Pacientes.Add(novoPaciente);
+        _context.Patients.Add(newPatient);
 
-        _logger.LogDebug("Created new paciente: {Nome}", nomePaciente);
+        _logger.LogDebug("Created new patient: {Name}", patientName);
 
-        return novoPaciente;
+        return newPatient;
     }
 
     /// <summary>
     /// Busca ou cria um tipo de exame
     /// </summary>
-    private async Task<TipoExame> GetOrCreateTipoExameAsync(
-        string nomeExame,
+    private async Task<ExamType> GetOrCreateExamTypeAsync(
+        string examName,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(nomeExame))
+        if (string.IsNullOrWhiteSpace(examName))
         {
-            throw new ArgumentException("Nome do exame cannot be empty", nameof(nomeExame));
+            throw new ArgumentException("Exam name cannot be empty", nameof(examName));
         }
 
         // Buscar tipo existente (match exato ou parcial)
-        var tipoExistente = await _context.TiposExame
+        var existingType = await _context.ExamTypes
             .FirstOrDefaultAsync(
-                t => t.Nome == nomeExame || t.Nome.Contains(nomeExame),
+                t => t.Name == examName || t.Name.Contains(examName),
                 cancellationToken);
 
-        if (tipoExistente != null)
+        if (existingType != null)
         {
-            _logger.LogDebug("Found existing tipo_exame: {Nome}", tipoExistente.Nome);
-            return tipoExistente;
+            _logger.LogDebug("Found existing exam type: {Name}", existingType.Name);
+            return existingType;
         }
 
         // Criar novo tipo de exame (categoria genérica)
-        var novoTipo = new TipoExame
+        var newType = new ExamType
         {
-            Nome = nomeExame,
-            Categoria = "Outros", // Categoria padrão para exames não mapeados
+            Name = examName,
+            Category = "Others", // Categoria padrão para exames não mapeados
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.TiposExame.Add(novoTipo);
+        _context.ExamTypes.Add(newType);
         
-        // Salvar IMEDIATAMENTE para garantir que o ID existe antes de criar Exame
+        // Salvar IMEDIATAMENTE para garantir que o ID existe antes de criar Exam
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogDebug("Created new tipo_exame: {Nome} with ID: {Id}", nomeExame, novoTipo.Id);
+        _logger.LogDebug("Created new exam type: {Name} with ID: {Id}", examName, newType.Id);
 
-        return novoTipo;
+        return newType;
     }
 
     /// <summary>
