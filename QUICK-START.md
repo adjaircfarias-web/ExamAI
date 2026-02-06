@@ -1,5 +1,230 @@
 # ⚡ ExamAI - Quick Start Guide
 
+<p align="center">
+  🇺🇸 <a href="#english">English</a> • 🇧🇷 <a href="#portugues">Português</a>
+</p>
+
+---
+
+<a name="english"></a>
+## 🇺🇸 English
+
+**Quick guide to start the project in 5 minutes!**
+
+---
+
+## 🎯 Objective
+
+Start ExamAI locally to test medical exam data extraction with AI.
+
+---
+
+## 📋 Prerequisites Checklist
+
+Before starting, ensure you have installed:
+
+- [ ] **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop/)
+- [ ] **.NET 10 SDK** - [Download](https://dotnet.microsoft.com/download)
+- [ ] **Ollama** - [Download](https://ollama.com)
+
+---
+
+## 🚀 Setup in 5 Steps
+
+### 1️⃣ Clone Repository
+
+```bash
+git clone <repo-url>
+cd ExamAI
+```
+
+---
+
+### 2️⃣ Start PostgreSQL (Docker)
+
+```bash
+# Option A: With script (Windows)
+.\scripts\docker-start.ps1
+
+# Option B: Direct command
+docker-compose up -d
+```
+
+**Wait ~30 seconds** for PostgreSQL to fully initialize.
+
+✅ **Verify:** `docker-compose ps` should show containers "healthy"
+
+---
+
+### 3️⃣ Download Ollama Model
+
+```bash
+ollama pull llama3.1:70b
+```
+
+⚠️ **Warning:** ~40GB download. May take time!
+
+✅ **Verify:** `ollama list` should list the model
+
+---
+
+### 4️⃣ Apply Migrations
+
+```bash
+cd src\ExamAI.Api
+dotnet ef database update
+```
+
+✅ **Verify:** Should display "Done" at the end
+
+---
+
+### 5️⃣ Run API
+
+```bash
+dotnet run
+```
+
+✅ **Verify:** 
+- Console should show: "Now listening on: http://localhost:5076"
+- Swagger: http://localhost:5076/swagger
+
+---
+
+## 🎉 Ready! Now Test
+
+### Test 1: Health Check
+
+```bash
+curl http://localhost:5076/health
+```
+
+**Expected:** `{"status":"healthy"}`
+
+---
+
+### Test 2: Upload Exam (Swagger UI)
+
+1. Open http://localhost:5076/swagger
+2. Expand `POST /api/process-and-save`
+3. Click "Try it out"
+4. Upload a medical exam PDF
+5. Click "Execute"
+
+**Expected:** Status 200 OK with `documentId` and extracted data
+
+---
+
+## 🎯 Access Points
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **API** | http://localhost:5076 | - |
+| **Swagger** | http://localhost:5076/swagger | - |
+| **PostgreSQL** | localhost:5432 | postgres / postgres123 |
+| **pgAdmin** | http://localhost:5050 | admin@examai.com / admin123 |
+
+---
+
+## 🐛 Common Problems
+
+### Docker doesn't start
+
+```bash
+# Check if Docker is running
+docker version
+
+# Check logs
+docker-compose logs postgres
+```
+
+### Port 5432 occupied
+
+```bash
+# Stop local PostgreSQL
+# Windows: services.msc → PostgreSQL → Stop
+
+# Or change port in docker-compose.yml
+ports:
+  - "15432:5432"
+```
+
+### Ollama not responding
+
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
+
+# If not, start:
+# Windows: Ollama should start automatically
+# Linux/Mac: ollama serve
+```
+
+### Migrations fail
+
+```bash
+# Check if PostgreSQL is accessible
+docker exec -it examai-postgres psql -U postgres -d examai
+
+# If OK, try again
+dotnet ef database update --force
+```
+
+---
+
+## 🛑 Stop Everything
+
+```bash
+# Stop API: Ctrl+C in terminal
+
+# Stop Docker
+docker-compose down
+
+# Or with script
+.\scripts\docker-stop.ps1
+```
+
+---
+
+## 📚 Next Steps
+
+After Quick Start is working:
+
+1. 📖 Read complete [README.md](README.md)
+2. 🎯 Test with real exams
+3. 🔧 Customize as needed
+
+---
+
+## 💡 Tips
+
+- **First execution:** LLM may take 10-30s
+- **Development:** Use Swagger UI (easier than curl)
+- **View database:** Use pgAdmin (http://localhost:5050)
+- **Logs:** `docker-compose logs -f postgres`
+- **Reset:** `docker-compose down -v` (deletes data!)
+
+---
+
+## 🆘 Need Help?
+
+1. Check [docker/README.md](docker/README.md) - Docker details
+2. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problem solutions
+3. Check logs: `docker-compose logs -f`
+4. Open issue on GitHub
+
+---
+
+**Estimated time:** 10-15 minutes (except Ollama model download)
+
+**Developed by:** Adjair Farias + Clawdex 🔍  
+**Version:** 1.3.0
+
+---
+
+<a name="portugues"></a>
+## 🇧🇷 Português
+
 **Guia rápido para iniciar o projeto em 5 minutos!**
 
 ---
@@ -97,23 +322,12 @@ curl http://localhost:5076/health
 ### Teste 2: Upload de Exame (Swagger UI)
 
 1. Abrir http://localhost:5076/swagger
-2. Expandir `POST /api/exams/upload`
+2. Expandir `POST /api/process-and-save`
 3. Click em "Try it out"
-4. Upload de um PDF de exame
-5. Preencher CPF (opcional)
-6. Click "Execute"
+4. Fazer upload de um PDF de exame
+5. Click "Execute"
 
-**Esperado:** Status 202 Accepted com `documentoId`
-
----
-
-### Teste 3: Consultar Status
-
-```bash
-curl http://localhost:5076/api/exams/status/{documentoId}
-```
-
-**Esperado:** Status 200 OK com `"status":"completed"`
+**Esperado:** Status 200 OK com `documentId` e dados extraídos
 
 ---
 
@@ -193,9 +407,8 @@ docker-compose down
 Depois do Quick Start funcionando:
 
 1. 📖 Ler [README.md](README.md) completo
-2. 📖 Ver [PROJECT-COMPLETE.md](docs/PROJECT-COMPLETE.md)
-3. 🎯 Testar com exames reais
-4. 🔧 Customizar conforme necessário
+2. 🎯 Testar com exames reais
+3. 🔧 Customizar conforme necessário
 
 ---
 
@@ -212,7 +425,7 @@ Depois do Quick Start funcionando:
 ## 🆘 Precisa de Ajuda?
 
 1. Ver [docker/README.md](docker/README.md) - Detalhes Docker
-2. Ver [scripts/README.md](scripts/README.md) - Scripts utilitários
+2. Ver [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Soluções de problemas
 3. Ver logs: `docker-compose logs -f`
 4. Abrir issue no GitHub
 
@@ -221,4 +434,4 @@ Depois do Quick Start funcionando:
 **Tempo estimado:** 10-15 minutos (exceto download do modelo Ollama)
 
 **Desenvolvido por:** Adjair Farias + Clawdex 🔍  
-**Versão:** 1.2.0
+**Versão:** 1.3.0

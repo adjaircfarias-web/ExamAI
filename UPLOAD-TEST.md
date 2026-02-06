@@ -1,4 +1,202 @@
-# 📤 Guia de Teste de Upload
+# 📤 Upload Test Guide
+
+<p align="center">
+  🇺🇸 <a href="#english">English</a> • 🇧🇷 <a href="#portugues">Português</a>
+</p>
+
+---
+
+<a name="english"></a>
+## 🇺🇸 English
+
+## ✅ Prerequisites
+
+Before testing upload, verify:
+
+### 1. Docker Running
+```bash
+docker-compose ps
+```
+**Expected:** PostgreSQL with status "Up"
+
+### 2. Ollama Running
+```bash
+Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get
+```
+**Expected:** List of models (should include llama3.1:70b)
+
+### 3. API Running
+```bash
+cd C:\dev\myprojects\ExamAI\src\ExamAI.Api
+dotnet run
+```
+**Expected:** `Now listening on: http://localhost:5076`
+
+---
+
+## 🧪 Step-by-Step Test
+
+### Option 1: Via Swagger UI (Recommended)
+
+1. **Open Swagger:**
+   ```
+   http://localhost:5076/swagger
+   ```
+
+2. **Expand endpoint:**
+   - Look for `POST /api/process-and-save`
+   - Click "Try it out"
+
+3. **Fill fields:**
+   - `file`: Click "Choose File" and select a PDF
+
+4. **Execute:**
+   - Click the blue "Execute" button
+
+5. **Verify response:**
+   ```json
+   {
+     "success": true,
+     "duplicate": false,
+     "documentId": "550e8400-e29b-41d4-a716-446655440000",
+     "patientId": "6a545cd7-...",
+     "fileName": "exame.pdf",
+     "fileHash": "abc123...",
+     "data": {
+       "patient": {
+         "name": "John Doe"
+       },
+       "exams": [
+         {
+           "type": "Blood Test",
+           "value": 150,
+           "unit": "mg/dL",
+           "status": "normal"
+         }
+       ]
+     },
+     "stats": {
+       "duration": 12500,
+       "examsExtracted": 5,
+       "validationWarnings": 0
+     }
+   }
+   ```
+   - ✅ Status 200 OK = Upload and processing OK
+   - ❌ "Failed to fetch" = CORS problem (see troubleshooting)
+
+---
+
+### Option 2: Via PowerShell
+
+```powershell
+# Upload
+$file = "C:\path\to\your\exam.pdf"
+$uri = "http://localhost:5076/api/process-and-save"
+
+$form = @{
+    file = Get-Item -Path $file
+}
+
+$response = Invoke-RestMethod -Uri $uri -Method Post -Form $form
+$documentId = $response.documentId
+Write-Host "Upload OK! DocumentId: $documentId"
+```
+
+---
+
+### Option 3: Via cURL (Windows)
+
+```bash
+curl -X POST "http://localhost:5076/api/process-and-save" ^
+  -H "accept: application/json" ^
+  -F "file=@C:\path\to\exam.pdf"
+```
+
+---
+
+## 📊 Real-time Logs
+
+While processing happens, see logs in the terminal where `dotnet run` is running:
+
+```
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'POST /api/process-and-save'
+info: Program[0]
+      Upload received: exam.pdf (245678 bytes)
+info: Program[0]
+      Processing completed for document 550e8400-...
+```
+
+---
+
+## ❌ Troubleshooting
+
+### "Document already processed" but status "failed"
+- **Cause:** Document failed in first processing (e.g., Ollama offline)
+- **Duplicate detection:** System detects hash and blocks new upload
+- **Solution:** 
+  1. Delete failed document: `DELETE /api/exams/{documentId}`
+  2. Upload again
+- **📖 Complete guide:** [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)
+
+### "Failed to fetch"
+- **Cause:** CORS not enabled or API not running
+- **Solution:** Verify `app.UseCors()` is uncommented in Program.cs
+
+### "File size exceeds 10MB limit"
+- **Cause:** File too large
+- **Solution:** Reduce size or increase limit in code
+
+### "Invalid file format"
+- **Cause:** Unsupported format
+- **Solution:** Use only .pdf, .docx or .xlsx
+
+### API crashes with "exit code -1"
+- **Cause:** Error in processing (see logs)
+- **Solution:** See TROUBLESHOOTING.md
+
+---
+
+## 🎯 Test Files
+
+Create simple test files:
+
+### Test PDF
+Use any PDF with text (not scanned image).
+
+### Test Word (.docx)
+```
+File: exam-test.docx
+Content: "Blood Test: Red Cells 4.5, White Cells 7000"
+```
+
+### Test Excel (.xlsx)
+```
+File: exam-test.xlsx
+A1: Exam | B1: Result
+A2: Glucose | B2: 95
+A3: Cholesterol | C3: 180
+```
+
+---
+
+## ✅ Success Checks
+
+1. ✅ Upload returns 200 OK
+2. ✅ documentId returned
+3. ✅ Processing completes successfully
+4. ✅ Data saved in PostgreSQL
+5. ✅ Data extracted by Ollama
+
+---
+
+**Last updated:** 2026-02-05 (v1.3.0)
+
+---
+
+<a name="portugues"></a>
+## 🇧🇷 Português
 
 ## ✅ Pré-requisitos
 
@@ -35,13 +233,11 @@ dotnet run
    ```
 
 2. **Expandir endpoint:**
-   - Procure `POST /api/exams/upload`
+   - Procure `POST /api/process-and-save`
    - Click em "Try it out"
 
 3. **Preencher campos:**
    - `file`: Click "Choose File" e selecione um PDF
-   - `cpf`: (opcional) Ex: "12345678901"
-   - `nomePaciente`: (opcional) Ex: "João Silva"
 
 4. **Executar:**
    - Click no botão azul "Execute"
@@ -50,25 +246,33 @@ dotnet run
    ```json
    {
      "success": true,
-     "documentoId": "550e8400-e29b-41d4-a716-446655440000",
-     "status": "processing",
-     "message": "Document accepted for processing",
-     "statusUrl": "/api/exams/status/550e8400-..."
+     "duplicate": false,
+     "documentId": "550e8400-e29b-41d4-a716-446655440000",
+     "patientId": "6a545cd7-...",
+     "fileName": "exame.pdf",
+     "fileHash": "abc123...",
+     "data": {
+       "patient": {
+         "name": "João Silva"
+       },
+       "exams": [
+         {
+           "type": "Hemograma",
+           "value": 150,
+           "unit": "mg/dL",
+           "status": "normal"
+         }
+       ]
+     },
+     "stats": {
+       "duration": 12500,
+       "examsExtracted": 5,
+       "validationWarnings": 0
+     }
    }
    ```
-   - ✅ Status 202 Accepted = Upload OK
-   - ❌ "Failed to fetch" = CORS problem (veja troubleshooting)
-
-6. **Consultar status do processamento:**
-   - Copie o `documentoId` da resposta
-   - Expanda `GET /api/exams/status/{documentoId}`
-   - Click "Try it out"
-   - Cole o documentoId
-   - Click "Execute"
-
-7. **Aguardar processamento:**
-   - Status muda de `processing` → `completed`
-   - Tempo estimado: 10-30 segundos (depende do Ollama)
+   - ✅ Status 200 OK = Upload e processamento OK
+   - ❌ "Failed to fetch" = Problema CORS (veja troubleshooting)
 
 ---
 
@@ -77,21 +281,15 @@ dotnet run
 ```powershell
 # Fazer upload
 $file = "C:\caminho\para\seu\exame.pdf"
-$uri = "http://localhost:5076/api/exams/upload"
+$uri = "http://localhost:5076/api/process-and-save"
 
 $form = @{
     file = Get-Item -Path $file
-    cpf = "12345678901"
-    nomePaciente = "João Silva"
 }
 
 $response = Invoke-RestMethod -Uri $uri -Method Post -Form $form
-$documentoId = $response.documentoId
-Write-Host "Upload OK! DocumentoId: $documentoId"
-
-# Consultar status
-$statusUri = "http://localhost:5076/api/exams/status/$documentoId"
-Invoke-RestMethod -Uri $statusUri -Method Get
+$documentId = $response.documentId
+Write-Host "Upload OK! DocumentId: $documentId"
 ```
 
 ---
@@ -99,11 +297,9 @@ Invoke-RestMethod -Uri $statusUri -Method Get
 ### Opção 3: Via cURL (Windows)
 
 ```bash
-curl -X POST "http://localhost:5076/api/exams/upload" ^
+curl -X POST "http://localhost:5076/api/process-and-save" ^
   -H "accept: application/json" ^
-  -F "file=@C:\caminho\para\exame.pdf" ^
-  -F "cpf=12345678901" ^
-  -F "nomePaciente=João Silva"
+  -F "file=@C:\caminho\para\exame.pdf"
 ```
 
 ---
@@ -114,11 +310,11 @@ Enquanto o processamento acontece, veja os logs no terminal onde `dotnet run` es
 
 ```
 info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
-      Executing endpoint 'POST /api/exams/upload'
+      Executing endpoint 'POST /api/process-and-save'
 info: Program[0]
-      Upload received: exame.pdf (245678 bytes), CPF: 12345678901
+      Upload received: exame.pdf (245678 bytes)
 info: Program[0]
-      Background processing completed for documento 550e8400-...
+      Processing completed for document 550e8400-...
 ```
 
 ---
@@ -129,7 +325,7 @@ info: Program[0]
 - **Causa:** Documento falhou no primeiro processamento (ex: Ollama offline)
 - **Detecção de duplicata:** Sistema detecta hash e bloqueia novo upload
 - **Solução:** 
-  1. Deletar documento falhado: `DELETE /api/exams/{documentoId}`
+  1. Deletar documento falhado: `DELETE /api/exams/{documentId}`
   2. Fazer upload novamente
 - **📖 Guia completo:** [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)
 
@@ -145,15 +341,7 @@ info: Program[0]
 - **Causa:** Formato não suportado
 - **Solução:** Use apenas .pdf, .docx ou .xlsx
 
-### Status fica "processing" para sempre
-- **Causa:** Ollama não está rodando ou modelo não carregado
-- **Solução:** 
-  ```bash
-  ollama list
-  ollama pull llama3.1:70b
-  ```
-
-### ExamAI.Api.exe exited with code -1
+### API crashes com "exit code -1"
 - **Causa:** Erro no processamento (veja logs)
 - **Solução:** Veja TROUBLESHOOTING.md
 
@@ -184,13 +372,12 @@ A3: Colesterol | C3: 180
 
 ## ✅ Verificações de Sucesso
 
-1. ✅ Upload retorna 202 Accepted
-2. ✅ documentoId retornado
-3. ✅ Status inicial é "processing"
-4. ✅ Status muda para "completed" após alguns segundos
-5. ✅ Registro salvo no PostgreSQL
-6. ✅ Dados extraídos pelo Ollama
+1. ✅ Upload retorna 200 OK
+2. ✅ documentId retornado
+3. ✅ Processamento completa com sucesso
+4. ✅ Registro salvo no PostgreSQL
+5. ✅ Dados extraídos pelo Ollama
 
 ---
 
-**Última atualização:** 2026-02-04 (v1.2.5)
+**Última atualização:** 05/02/2026 (v1.3.0)
