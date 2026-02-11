@@ -37,7 +37,7 @@ services:
       ASPNETCORE_URLS: http://+:5076
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=examai;Username=postgres;Password=postgres123
       Ollama__Url: http://host.docker.internal:11434
-      Ollama__Model: llama3.1:70b
+      Ollama__Model: phi4:14b
       Ollama__TimeoutSeconds: 180
       Ollama__MaxTokens: 8192
     ports:

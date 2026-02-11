@@ -8,7 +8,7 @@ using System.Text;
 namespace ExamAI.Infrastructure.Parsers;
 
 /// <summary>
-/// Parser para arquivos PDF usando iText7
+/// Parser para arquivos PDF usando iText7 com múltiplas estratégias de extração
 /// </summary>
 public class PdfParser : IDocumentParser
 {
@@ -61,6 +61,7 @@ public class PdfParser : IDocumentParser
             }
 
             var extractedText = new StringBuilder();
+            var metadata = new StringBuilder();
 
             using (var pdfReader = new PdfReader(streamToUse))
             using (var pdfDocument = new PdfDocument(pdfReader))
@@ -68,6 +69,25 @@ public class PdfParser : IDocumentParser
                 var numberOfPages = pdfDocument.GetNumberOfPages();
                 _logger.LogInformation("PDF has {PageCount} pages", numberOfPages);
 
+                // Extrair metadados do PDF
+                var pdfInfo = pdfDocument.GetDocumentInfo();
+                if (!string.IsNullOrEmpty(pdfInfo.GetTitle()))
+                    metadata.AppendLine($"Título: {pdfInfo.GetTitle()}");
+                if (!string.IsNullOrEmpty(pdfInfo.GetAuthor()))
+                    metadata.AppendLine($"Autor: {pdfInfo.GetAuthor()}");
+                if (!string.IsNullOrEmpty(pdfInfo.GetSubject()))
+                    metadata.AppendLine($"Assunto: {pdfInfo.GetSubject()}");
+                
+                if (metadata.Length > 0)
+                {
+                    extractedText.AppendLine("=== METADADOS DO DOCUMENTO ===");
+                    extractedText.Append(metadata.ToString());
+                    extractedText.AppendLine();
+                }
+
+                // Tentar extrair texto com múltiplas estratégias
+                var totalChars = 0;
+                
                 for (int pageNumber = 1; pageNumber <= numberOfPages; pageNumber++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -75,34 +95,62 @@ public class PdfParser : IDocumentParser
                     try
                     {
                         var page = pdfDocument.GetPage(pageNumber);
-                        var strategy = new SimpleTextExtractionStrategy();
-                        var pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
-
-                        if (!string.IsNullOrWhiteSpace(pageText))
+                        
+                        // Estratégia 1: SimpleTextExtractionStrategy
+                        var strategy1 = new SimpleTextExtractionStrategy();
+                        var text1 = PdfTextExtractor.GetTextFromPage(page, strategy1);
+                        
+                        // Estratégia 2: LocationTextExtractionStrategy (melhor para layouts complexos)
+                        var strategy2 = new LocationTextExtractionStrategy();
+                        var text2 = PdfTextExtractor.GetTextFromPage(page, strategy2);
+                        
+                        // Usar o texto mais longo das duas estratégias
+                        var bestText = text1?.Length > text2?.Length ? text1 : text2;
+                        
+                        if (!string.IsNullOrWhiteSpace(bestText))
                         {
-                            extractedText.AppendLine($"--- Página {pageNumber} ---");
-                            extractedText.AppendLine(pageText);
+                            extractedText.AppendLine($"--- PÁGINA {pageNumber} ---");
+                            extractedText.AppendLine(bestText.Trim());
+                            extractedText.AppendLine();
+                            totalChars += bestText.Length;
+                            
+                            _logger.LogDebug("Extracted {CharCount} chars from page {PageNumber} using {Strategy}", 
+                                bestText.Length, pageNumber, 
+                                bestText == text1 ? "SimpleText" : "LocationText");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("No text extracted from page {PageNumber} - might be image-based", pageNumber);
+                            extractedText.AppendLine($"--- PÁGINA {pageNumber} (conteúdo em imagem) ---");
+                            extractedText.AppendLine("[Esta página parece conter apenas imagens sem texto extraível]");
                             extractedText.AppendLine();
                         }
-
-                        _logger.LogDebug("Extracted {CharCount} chars from page {PageNumber}", 
-                            pageText?.Length ?? 0, pageNumber);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Failed to extract text from page {PageNumber}, skipping", pageNumber);
-                        extractedText.AppendLine($"--- Página {pageNumber} (erro na extração) ---");
+                        extractedText.AppendLine($"--- PÁGINA {pageNumber} (erro na extração) ---");
                     }
                 }
+
+                _logger.LogInformation("PDF text extraction completed. Total chars extracted: {CharCount} from {PageCount} pages", 
+                    totalChars, numberOfPages);
             }
 
             var result = extractedText.ToString();
-            _logger.LogInformation("PDF text extraction completed, total chars: {CharCount}", result.Length);
 
-            if (string.IsNullOrWhiteSpace(result))
+            if (string.IsNullOrWhiteSpace(result) || result.Length < 50)
             {
-                _logger.LogWarning("No text extracted from PDF - might be scanned/image-only");
-                return "AVISO: Nenhum texto foi extraído do PDF. O documento pode ser uma imagem escaneada.";
+                _logger.LogWarning("Very little or no text extracted from PDF ({CharCount} chars) - might be scanned/image-only", 
+                    result?.Length ?? 0);
+                return @"AVISO: Nenhum texto foi extraído do PDF. O documento pode ser uma imagem escaneada.
+
+Para processar este documento, você pode:
+1. Usar um software de OCR (Tesseract, Adobe Acrobat) para converter o PDF em texto
+2. Digitar manualmente os dados do exame
+3. Converter o PDF para imagem e usar uma API de OCR
+
+Se este for um PDF comum e deveria conter texto, pode haver um problema com a codificação do documento.";
             }
 
             return result;

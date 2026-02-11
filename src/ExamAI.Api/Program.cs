@@ -68,7 +68,20 @@ builder.Services.AddScoped<DocumentHashService>();
 // ===================================================
 // Configure HTTP Client Factory
 // ===================================================
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("OllamaClient")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+    .ConfigureHttpClient((sp, client) =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(300); // 5 minutos
+    });
+
+// Configurar HttpClient default também
+builder.Services.AddHttpClient("DefaultClient")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+    .ConfigureHttpClient((sp, client) =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(300); // 5 minutos
+    });
 
 // ===================================================
 // Configure CORS
@@ -236,6 +249,7 @@ app.MapPost("/api/process-and-save", async (
     MedicalExamPipeline pipeline,
     ExamRepository repository,
     DocumentHashService hashService,
+    AppDbContext dbContext,
     ILogger<Program> logger) =>
 {
     try
@@ -279,9 +293,6 @@ app.MapPost("/api/process-and-save", async (
                 })
             });
         }
-
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
         // 3. Criar documento no banco (sem paciente inicialmente)
         var document = new ExamAI.Domain.Entities.Document
@@ -362,6 +373,119 @@ app.MapPost("/api/process-and-save", async (
 .WithName("ProcessAndSaveExam")
 .WithTags("Exams")
 .DisableAntiforgery();
+
+// GET /api/exams - Listar todos os exames
+app.MapGet("/api/exams", async (
+    AppDbContext dbContext,
+    ILogger<Program> logger,
+    int? page = 1,
+    int? pageSize = 20,
+    string? patientName = null) =>
+{
+    try
+    {
+        logger.LogInformation("Listing exams - Page: {Page}, PageSize: {PageSize}, Patient: {Patient}",
+            page, pageSize, patientName);
+
+        // Limitar pageSize maximo a 100
+        var effectivePageSize = Math.Min(pageSize ?? 20, 100);
+
+        // Base query
+        var query = dbContext.Exams
+            .AsNoTracking()
+            .Include(e => e.Document)
+                .ThenInclude(d => d.Patient)
+            .Include(e => e.ExamType)
+            .Include(e => e.Results)
+            .AsQueryable();
+
+        // Aplicar filtro por nome do paciente (parcial)
+        if (!string.IsNullOrWhiteSpace(patientName))
+        {
+            query = query.Where(e => e.Document.Patient != null &&
+                EF.Functions.ILike(e.Document.Patient.Name, $"%{patientName}%"));
+        }
+
+        // Contagem total
+        var total = await query.CountAsync();
+
+        // Ordenar por data de upload e aplicar paginacao
+        var exams = await query
+            .OrderByDescending(e => e.Document.UploadDate)
+            .ThenByDescending(e => e.CreatedAt)
+            .Skip((page.Value - 1) * effectivePageSize)
+            .Take(effectivePageSize)
+            .ToListAsync();
+
+        // Mapear para DTO
+        var examDtos = exams.Select(e => new
+        {
+            examId = e.Id,
+            examType = e.ExamType?.Name ?? "Tipo nao identificado",
+            category = e.ExamType?.Category ?? "Sem categoria",
+            collectionDate = e.CollectionDate,
+            requestingPhysician = e.RequestingPhysician,
+            laboratory = e.Laboratory,
+            uploadDate = e.Document.UploadDate,
+            processingStatus = e.Document.ProcessingStatus,
+            patient = e.Document.Patient == null ? null : new
+            {
+                id = e.Document.Patient.Id,
+                name = e.Document.Patient.Name,
+                cpf = e.Document.Patient.Cpf,
+                birthDate = e.Document.Patient.BirthDate
+            },
+            document = new
+            {
+                id = e.Document.Id,
+                fileName = e.Document.FileName
+            },
+            results = e.Results.Select(r => new
+            {
+                parameter = r.Parameter,
+                value = r.NumericValue?.ToString() ?? r.TextValue,
+                unit = r.Unit,
+                referenceRange = r.ReferenceMin.HasValue && r.ReferenceMax.HasValue
+                    ? $"{r.ReferenceMin}-{r.ReferenceMax}"
+                    : null,
+                status = r.Status
+            }).ToList(),
+            resultsCount = e.Results.Count
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling(total / (double)effectivePageSize);
+
+        return Results.Ok(new
+        {
+            success = true,
+            data = examDtos,
+            pagination = new
+            {
+                page = page.Value,
+                pageSize = effectivePageSize,
+                total,
+                totalPages
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error listing exams");
+        return Results.Json(new
+        {
+            success = false,
+            error = "Erro ao listar exames",
+            details = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("GetAllExams")
+.WithTags("Exams")
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Listar todos os exames",
+    Description = "Retorna lista paginada de exames com dados do paciente e resultados"
+});
 
 // Endpoint para buscar exames por CPF
 app.MapGet("/api/exams/patient/{cpf}", async (

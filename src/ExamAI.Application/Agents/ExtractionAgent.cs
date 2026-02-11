@@ -49,6 +49,10 @@ public class ExtractionAgent
         var systemPrompt = GetSystemPrompt();
         var userPrompt = GetUserPrompt(documentText);
 
+        _logger.LogInformation("Document text being sent to LLM ({CharCount} chars): {Text}", 
+            documentText.Length,
+            documentText.Length > 300 ? documentText.Substring(0, 300) + "..." : documentText);
+
         // Tentar extração com retry
         for (int attempt = 0; attempt <= MaxRetries; attempt++)
         {
@@ -57,7 +61,7 @@ public class ExtractionAgent
                 _logger.LogDebug("Extraction attempt {Attempt}/{MaxAttempts}", attempt + 1, MaxRetries + 1);
 
                 // Chamar Ollama via HTTP
-                using var httpClient = _httpClientFactory.CreateClient();
+                using var httpClient = _httpClientFactory.CreateClient("OllamaClient");
                 
                 var ollamaRequest = new
                 {
@@ -83,7 +87,9 @@ public class ExtractionAgent
 
                 var responseText = ollamaResponse?.Response ?? string.Empty;
 
-                _logger.LogDebug("LLM response received ({CharCount} chars)", responseText.Length);
+                _logger.LogInformation("LLM raw response ({CharCount} chars): {Response}", 
+                    responseText.Length, 
+                    responseText.Length > 500 ? responseText.Substring(0, 500) + "..." : responseText);
 
                 // Extrair JSON da resposta (pode vir com markdown code block)
                 var jsonText = ExtractJsonFromResponse(responseText);
@@ -141,46 +147,49 @@ public class ExtractionAgent
 
 Sua tarefa é analisar o texto de um exame médico e extrair as seguintes informações em formato JSON:
 
-1. Informações do paciente:
-   - nome: nome completo do paciente
-   - data_nascimento: data de nascimento (formato: YYYY-MM-DD, ou null se não encontrado)
-   - data_coleta: data de coleta do exame (formato: YYYY-MM-DD)
-   - medico_solicitante: nome do médico que solicitou o exame
+1. Informações do paciente (use as chaves exatas em inglês):
+   - patient: objeto com dados do paciente
+     - name: nome completo do paciente
+     - birthDate: data de nascimento (formato: YYYY-MM-DD, ou null se não encontrado)
+     - collectionDate: data de coleta do exame (formato: YYYY-MM-DD)
+     - requestingPhysician: nome do médico que solicitou o exame
 
-2. Lista de exames realizados:
-   - tipo: nome do exame/parâmetro (ex: ""Colesterol Total"", ""Glicemia"", ""Hemoglobina"")
-   - valor: valor numérico do resultado (apenas número, sem unidade)
-   - unidade: unidade de medida (ex: ""mg/dL"", ""g/dL"", ""%"")
-   - referencia_min: valor mínimo da faixa de referência (número ou null)
-   - referencia_max: valor máximo da faixa de referência (número ou null)
-   - status: interpretação do resultado (""normal"", ""baixo"", ""alto"", ""crítico"", ou null)
-   - observacoes: qualquer observação adicional (ou null)
+2. Lista de exames realizados (use as chaves exatas em inglês):
+   - exams: array de objetos, cada um com:
+     - type: nome do exame/parâmetro (ex: ""Colesterol Total"", ""Glicemia"", ""Hemoglobina"")
+     - value: valor numérico do resultado (apenas número, sem unidade)
+     - unit: unidade de medida (ex: ""mg/dL"", ""g/dL"", ""%"")
+     - referenceMin: valor mínimo da faixa de referência (número ou null)
+     - referenceMax: valor máximo da faixa de referência (número ou null)
+     - status: interpretação do resultado (""normal"", ""baixo"", ""alto"", ""crítico"", ou null)
+     - observations: qualquer observação adicional (ou null)
 
 IMPORTANTE:
-- Retorne APENAS o JSON, sem texto adicional
+- Retorne APENAS o JSON válido, sem texto adicional
+- Use as chaves EXATAMENTE como especificado acima (em inglês)
 - Use null quando a informação não estiver disponível
 - Para datas, use formato YYYY-MM-DD
-- Para valores numéricos, use apenas números (sem vírgulas em milhares)
+- Para valores numéricos, use ponto como separador decimal (ex: 5.2, não 5,2)
 - Para status, analise se o valor está dentro, abaixo ou acima da faixa de referência
 - Se houver múltiplos exames, inclua todos na lista
+- O JSON deve ter exatamente esta estrutura:
 
-Formato JSON:
 {
-  ""paciente"": {
-    ""nome"": ""string ou null"",
-    ""data_nascimento"": ""YYYY-MM-DD ou null"",
-    ""data_coleta"": ""YYYY-MM-DD"",
-    ""medico_solicitante"": ""string ou null""
+  ""patient"": {
+    ""name"": ""string ou null"",
+    ""birthDate"": ""YYYY-MM-DD ou null"",
+    ""collectionDate"": ""YYYY-MM-DD"",
+    ""requestingPhysician"": ""string ou null""
   },
-  ""exames"": [
+  ""exams"": [
     {
-      ""tipo"": ""string"",
-      ""valor"": número ou null,
-      ""unidade"": ""string ou null"",
-      ""referencia_min"": número ou null,
-      ""referencia_max"": número ou null,
+      ""type"": ""string"",
+      ""value"": número.ou.null,
+      ""unit"": ""string ou null"",
+      ""referenceMin"": número.ou.null,
+      ""referenceMax"": número.ou.null,
       ""status"": ""normal|baixo|alto|crítico ou null"",
-      ""observacoes"": ""string ou null""
+      ""observations"": ""string ou null""
     }
   ]
 }";

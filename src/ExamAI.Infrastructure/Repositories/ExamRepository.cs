@@ -304,7 +304,8 @@ public class ExamRepository
 
         if (DateTime.TryParse(dateString, out var date))
         {
-            return date;
+            // Garantir que a data seja UTC para PostgreSQL
+            return DateTime.SpecifyKind(date, DateTimeKind.Utc);
         }
 
         _logger.LogWarning("Failed to parse date: {DateString}, using current date", dateString);
