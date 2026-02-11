@@ -124,17 +124,20 @@ app.MapGet("/health", () => Results.Ok(new
 .WithTags("Health");
 
 // Health check do Ollama
-app.MapGet("/health/ollama", async (ILogger<Program> logger) =>
+app.MapGet("/health/ollama", async (ILogger<Program> logger, IConfiguration config) =>
 {
     try
     {
-        logger.LogInformation("Testing Ollama connection...");
+        var ollamaUrl = config["Ollama:Url"] ?? "http://localhost:11434";
+        var ollamaModel = config["Ollama:Model"] ?? "llama3.1:70b";
+        
+        logger.LogInformation("Testing Ollama connection at {Url}...", ollamaUrl);
 
         // Testar conexão HTTP direta com Ollama
         using var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-        var response = await httpClient.GetAsync("http://localhost:11434/api/tags");
+        var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags");
         
         if (response.IsSuccessStatusCode)
         {
@@ -143,8 +146,8 @@ app.MapGet("/health/ollama", async (ILogger<Program> logger) =>
             {
                 status = "healthy",
                 service = "Ollama",
-                url = "http://localhost:11434",
-                model = "llama3.1:70b",
+                url = ollamaUrl,
+                model = ollamaModel,
                 timestamp = DateTime.UtcNow
             });
         }
