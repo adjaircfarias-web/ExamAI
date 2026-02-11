@@ -49,10 +49,6 @@ public class ExtractionAgent
         var systemPrompt = GetSystemPrompt();
         var userPrompt = GetUserPrompt(documentText);
 
-        _logger.LogInformation("Document text being sent to LLM ({CharCount} chars): {Text}", 
-            documentText.Length,
-            documentText.Length > 300 ? documentText.Substring(0, 300) + "..." : documentText);
-
         // Tentar extração com retry
         for (int attempt = 0; attempt <= MaxRetries; attempt++)
         {
@@ -86,10 +82,6 @@ public class ExtractionAgent
                     cancellationToken: cancellationToken);
 
                 var responseText = ollamaResponse?.Response ?? string.Empty;
-
-                _logger.LogInformation("LLM raw response ({CharCount} chars): {Response}", 
-                    responseText.Length, 
-                    responseText.Length > 500 ? responseText.Substring(0, 500) + "..." : responseText);
 
                 // Extrair JSON da resposta (pode vir com markdown code block)
                 var jsonText = ExtractJsonFromResponse(responseText);
