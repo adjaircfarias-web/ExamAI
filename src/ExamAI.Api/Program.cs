@@ -558,64 +558,6 @@ app.MapGet("/api/exams/patient/{cpf}", async (
 .WithName("GetExamsByPatient")
 .WithTags("Exams");
 
-// Reprocessar Documento Falhado
-app.MapPost("/api/exams/reprocess/{documentId}", async (
-    Guid documentId,
-    MedicalExamPipeline pipeline,
-    ExamRepository repository,
-    ILogger<Program> logger) =>
-{
-    try
-    {
-        logger.LogInformation("Reprocessing document: {DocumentId}", documentId);
-
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
-
-        // Buscar documento
-        var document = await dbContext.Documents
-            .Include(d => d.Patient)
-            .FirstOrDefaultAsync(d => d.Id == documentId);
-
-        if (document == null)
-        {
-            return Results.NotFound(new { success = false, error = "Document not found" });
-        }
-
-        logger.LogInformation("Found document: {FileName}, Current status: {Status}", 
-            document.FileName, document.ProcessingStatus);
-
-        // Atualizar status para processing
-        document.ProcessingStatus = "processing";
-        document.ProcessingError = null;
-        await dbContext.SaveChangesAsync();
-
-        // Nota: Como não temos o arquivo original em disco, 
-        // não podemos reprocessar completamente
-        // Esta é uma limitação - precisaria armazenar o arquivo em disco ou blob storage
-
-        return Results.Ok(new
-        {
-            success = false,
-            error = "Cannot reprocess: original file not stored. Please re-upload the document.",
-            documentId = document.Id,
-            fileName = document.FileName,
-            suggestion = "Use DELETE /api/exams/{documentId} to remove failed document, then upload again"
-        });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error reprocessing document: {DocumentId}", documentId);
-        return Results.Json(new
-        {
-            success = false,
-            error = ex.Message
-        }, statusCode: 500);
-    }
-})
-.WithName("ReprocessDocument")
-.WithTags("Exams");
-
 // Deletar Documento
 app.MapDelete("/api/exams/{documentId}", async (
     Guid documentId,

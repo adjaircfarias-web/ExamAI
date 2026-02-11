@@ -150,6 +150,7 @@ Sua tarefa é analisar o texto de um exame médico e extrair as seguintes inform
 1. Informações do paciente (use as chaves exatas em inglês):
    - patient: objeto com dados do paciente
      - name: nome completo do paciente
+     - cpf: número do CPF do paciente (apenas números, 11 dígitos, ou null se não encontrado)
      - birthDate: data de nascimento (formato: YYYY-MM-DD, ou null se não encontrado)
      - collectionDate: data de coleta do exame (formato: YYYY-MM-DD)
      - requestingPhysician: nome do médico que solicitou o exame
@@ -177,6 +178,7 @@ IMPORTANTE:
 {
   ""patient"": {
     ""name"": ""string ou null"",
+    ""cpf"": ""string de 11 dígitos ou null"",
     ""birthDate"": ""YYYY-MM-DD ou null"",
     ""collectionDate"": ""YYYY-MM-DD"",
     ""requestingPhysician"": ""string ou null""
