@@ -17,20 +17,20 @@ Before testing upload, verify:
 ```bash
 docker-compose ps
 ```
-**Expected:** PostgreSQL with status "Up"
+**Expected:** PostgreSQL and API with status "healthy" or "Up"
 
 ### 2. Ollama Running
 ```bash
-Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get
+curl http://localhost:11434/api/tags
 ```
-**Expected:** List of models (should include llama3.1:70b)
+**Expected:** List of models (should include phi4:14b or llama3.1:8b)
 
 ### 3. API Running
 ```bash
-cd C:\dev\myprojects\ExamAI\src\ExamAI.Api
-dotnet run
+# API is running via Docker!
+curl http://localhost:5076/health
 ```
-**Expected:** `Now listening on: http://localhost:5076`
+**Expected:** `{"status":"healthy"}`
 
 ---
 
@@ -64,16 +64,21 @@ dotnet run
      "fileHash": "abc123...",
      "data": {
        "patient": {
-         "name": "John Doe"
+         "name": "John Doe",
+         "cpf": "12345678900"
        },
        "exams": [
          {
-           "type": "Blood Test",
-           "value": 150,
-           "unit": "mg/dL",
+           "type": "Hemograma Completo",
+           "value": 5.2,
+           "unit": "milhões/mm³",
            "status": "normal"
          }
        ]
+     },
+     "validation": {
+       "isValid": true,
+       "warningCount": 0
      },
      "stats": {
        "duration": 12500,
@@ -105,27 +110,30 @@ Write-Host "Upload OK! DocumentId: $documentId"
 
 ---
 
-### Option 3: Via cURL (Windows)
+### Option 3: Via cURL
 
 ```bash
-curl -X POST "http://localhost:5076/api/process-and-save" ^
-  -H "accept: application/json" ^
-  -F "file=@C:\path\to\exam.pdf"
+curl -X POST "http://localhost:5076/api/process-and-save" \
+  -F "file=@/path/to/exam.pdf"
 ```
 
 ---
 
-## 📊 Real-time Logs
+## 📊 List All Exams
 
-While processing happens, see logs in the terminal where `dotnet run` is running:
-
+### Get All Processed Exams
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
 ```
-info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
-      Executing endpoint 'POST /api/process-and-save'
-info: Program[0]
-      Upload received: exam.pdf (245678 bytes)
-info: Program[0]
-      Processing completed for document 550e8400-...
+
+### Filter by Patient Name
+```bash
+curl "http://localhost:5076/api/exams?patientName=Silva"
+```
+
+### Search by CPF
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
 ```
 
 ---
@@ -135,26 +143,35 @@ info: Program[0]
 ### "Document already processed" but status "failed"
 - **Cause:** Document failed in first processing (e.g., Ollama offline)
 - **Duplicate detection:** System detects hash and blocks new upload
-- **Solution:** 
+- **Solution:**
   1. Delete failed document: `DELETE /api/exams/{documentId}`
   2. Upload again
-- **📖 Complete guide:** [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)
 
 ### "Failed to fetch"
 - **Cause:** CORS not enabled or API not running
-- **Solution:** Verify `app.UseCors()` is uncommented in Program.cs
+- **Solution:** Verify API is running with `curl http://localhost:5076/health`
 
 ### "File size exceeds 10MB limit"
 - **Cause:** File too large
-- **Solution:** Reduce size or increase limit in code
+- **Solution:** Reduce file size
 
 ### "Invalid file format"
 - **Cause:** Unsupported format
 - **Solution:** Use only .pdf, .docx or .xlsx
 
-### API crashes with "exit code -1"
-- **Cause:** Error in processing (see logs)
-- **Solution:** See TROUBLESHOOTING.md
+### API crashes or returns 500
+- **Cause:** Error in processing (check Ollama or database)
+- **Solution:**
+  ```bash
+  # Check API logs
+  docker logs examai-api
+
+  # Check Ollama
+  curl http://localhost:11434/api/tags
+
+  # Check database
+  docker logs examai-postgres
+  ```
 
 ---
 
@@ -187,11 +204,20 @@ A3: Cholesterol | C3: 180
 2. ✅ documentId returned
 3. ✅ Processing completes successfully
 4. ✅ Data saved in PostgreSQL
-5. ✅ Data extracted by Ollama
+5. ✅ Patient data extracted (name and CPF)
+6. ✅ Exams and results extracted
 
 ---
 
-**Last updated:** 2026-02-05 (v1.3.0)
+## 🔗 Related Documentation
+
+- [README.md](README.md) - Complete project documentation
+- [QUICK-START.md](QUICK-START.md) - Quick start guide
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Problem solutions
+
+---
+
+**Last updated:** 2026-02-11 (v1.4.0)
 
 ---
 
@@ -206,20 +232,20 @@ Antes de testar upload, verifique:
 ```bash
 docker-compose ps
 ```
-**Esperado:** PostgreSQL com status "Up"
+**Esperado:** PostgreSQL e API com status "healthy" ou "Up"
 
 ### 2. Ollama rodando
 ```bash
-Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get
+curl http://localhost:11434/api/tags
 ```
-**Esperado:** Lista de modelos (deve incluir llama3.1:70b)
+**Esperado:** Lista de modelos (deve incluir phi4:14b ou llama3.1:8b)
 
 ### 3. API rodando
 ```bash
-cd C:\dev\myprojects\ExamAI\src\ExamAI.Api
-dotnet run
+# A API está rodando via Docker!
+curl http://localhost:5076/health
 ```
-**Esperado:** `Now listening on: http://localhost:5076`
+**Esperado:** `{"status":"healthy"}`
 
 ---
 
@@ -253,16 +279,21 @@ dotnet run
      "fileHash": "abc123...",
      "data": {
        "patient": {
-         "name": "João Silva"
+         "name": "João Silva",
+         "cpf": "12345678900"
        },
        "exams": [
          {
-           "type": "Hemograma",
-           "value": 150,
-           "unit": "mg/dL",
+           "type": "Hemograma Completo",
+           "value": 5.2,
+           "unit": "milhões/mm³",
            "status": "normal"
          }
        ]
+     },
+     "validation": {
+       "isValid": true,
+       "warningCount": 0
      },
      "stats": {
        "duration": 12500,
@@ -294,27 +325,30 @@ Write-Host "Upload OK! DocumentId: $documentId"
 
 ---
 
-### Opção 3: Via cURL (Windows)
+### Opção 3: Via cURL
 
 ```bash
-curl -X POST "http://localhost:5076/api/process-and-save" ^
-  -H "accept: application/json" ^
-  -F "file=@C:\caminho\para\exame.pdf"
+curl -X POST "http://localhost:5076/api/process-and-save" \
+  -F "file=@/caminho/para/exame.pdf"
 ```
 
 ---
 
-## 📊 Logs em Tempo Real
+## 📊 Listar Todos os Exames
 
-Enquanto o processamento acontece, veja os logs no terminal onde `dotnet run` está rodando:
-
+### Obter Todos os Exames Processados
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
 ```
-info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
-      Executing endpoint 'POST /api/process-and-save'
-info: Program[0]
-      Upload received: exame.pdf (245678 bytes)
-info: Program[0]
-      Processing completed for document 550e8400-...
+
+### Filtrar por Nome do Paciente
+```bash
+curl "http://localhost:5076/api/exams?patientName=Silva"
+```
+
+### Buscar por CPF
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
 ```
 
 ---
@@ -324,26 +358,35 @@ info: Program[0]
 ### "Document already processed" mas status "failed"
 - **Causa:** Documento falhou no primeiro processamento (ex: Ollama offline)
 - **Detecção de duplicata:** Sistema detecta hash e bloqueia novo upload
-- **Solução:** 
+- **Solução:**
   1. Deletar documento falhado: `DELETE /api/exams/{documentId}`
   2. Fazer upload novamente
-- **📖 Guia completo:** [DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)
 
 ### "Failed to fetch"
 - **Causa:** CORS não ativado ou API não rodando
-- **Solução:** Verificar se `app.UseCors()` está descomentado em Program.cs
+- **Solução:** Verificar se API está rodando com `curl http://localhost:5076/health`
 
 ### "File size exceeds 10MB limit"
 - **Causa:** Arquivo muito grande
-- **Solução:** Reduzir tamanho ou aumentar limite no código
+- **Solução:** Reduzir tamanho do arquivo
 
 ### "Invalid file format"
 - **Causa:** Formato não suportado
 - **Solução:** Use apenas .pdf, .docx ou .xlsx
 
-### API crashes com "exit code -1"
-- **Causa:** Erro no processamento (veja logs)
-- **Solução:** Veja TROUBLESHOOTING.md
+### API crasha ou retorna 500
+- **Causa:** Erro no processamento (verificar Ollama ou banco)
+- **Solução:**
+  ```bash
+  # Verificar logs da API
+  docker logs examai-api
+
+  # Verificar Ollama
+  curl http://localhost:11434/api/tags
+
+  # Verificar banco
+  docker logs examai-postgres
+  ```
 
 ---
 
@@ -376,8 +419,17 @@ A3: Colesterol | C3: 180
 2. ✅ documentId retornado
 3. ✅ Processamento completa com sucesso
 4. ✅ Registro salvo no PostgreSQL
-5. ✅ Dados extraídos pelo Ollama
+5. ✅ Dados do paciente extraídos (nome e CPF)
+6. ✅ Exames e resultados extraídos
 
 ---
 
-**Última atualização:** 05/02/2026 (v1.3.0)
+## 🔗 Documentação Relacionada
+
+- [README.md](README.md) - Documentação completa do projeto
+- [QUICK-START.md](QUICK-START.md) - Guia de início rápido
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Soluções de problemas
+
+---
+
+**Última atualização:** 11/02/2026 (v1.4.0)

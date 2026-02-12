@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
   <img src="https://img.shields.io/badge/Ollama-Local-F5A623?logo=ollama&logoColor=white" alt="Ollama Local">
-  <img src="https://img.shields.io/badge/Version-1.3.0-brightgreen" alt="Version 1.3.0">
+  <img src="https://img.shields.io/badge/Version-1.4.0-brightgreen" alt="Version 1.4.0">
   <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License">
 </p>
 
@@ -26,38 +26,41 @@
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Ollama](https://ollama.com) with model `llama3.1:70b`
+- [Ollama](https://ollama.com) with model `phi4:14b` or `llama3.1:8b`
 
-### Option 1: Docker Compose (Recommended)
+### Docker Compose (Recommended)
 
 ```bash
-# 1. Start PostgreSQL + pgAdmin
+# Start PostgreSQL + API
 docker-compose up -d
 
-# 2. Apply migrations
-cd src/ExamAI.Api
-dotnet ef database update
-
-# 3. Start API
-dotnet run
-
-# 4. Access Swagger
+# Access Swagger
 # http://localhost:5076/swagger
 ```
 
-### Option 2: Using Makefile
+### Local Development
 
 ```bash
-make setup  # Complete setup
-make run    # Start API
+# Copy environment variables
+cp .env.example .env
+
+# Start PostgreSQL (via Docker)
+docker-compose up -d postgres
+
+# Apply migrations and run API
+cd src/ExamAI.Api
+dotnet ef database update
+dotnet run
 ```
 
-### Configuration
-
-Copy the environment variables example file:
+### Ollama Setup
 
 ```bash
-cp .env.example .env
+# Install model
+ollama pull phi4:14b
+
+# Or use smaller model (8B parameters)
+ollama pull llama3.1:8b
 ```
 
 ---
@@ -66,8 +69,8 @@ cp .env.example .env
 
 ### Complete Pipeline
 - **Upload** documents (PDF, Word, Excel) - max 10MB
-- **Extraction** with specialized parsers
-- **Processing** with local AI (Ollama LLM)
+- **Extraction** with specialized parsers (iText7, EPPlus, OpenXml)
+- **Processing** with local AI (Ollama LLM - phi4:14b or llama3.1:8b)
 - **Validation** (15+ consistency rules)
 - **Normalization** (30+ nomenclature mappings)
 - **Persistence** in PostgreSQL with ACID
@@ -76,6 +79,11 @@ cp .env.example .env
 - SHA256 hash for all documents
 - Instant return (< 100ms) for duplicates
 - Saves LLM processing resources
+
+### CPF Extraction
+- AI extracts patient CPF from documents
+- Automatic patient matching by CPF or name
+- Nullable CPF field in database
 
 ---
 
@@ -88,7 +96,7 @@ cp .env.example .env
                    │ HTTP/REST
                    ▼
 ┌─────────────────────────────────────────────┐
-│  ExamAI.Api (Controllers + Swagger)         │
+│  ExamAI.Api (Minimal API + Swagger)          │
 └──────────────────┬──────────────────────────┘
                    │
                    ▼
@@ -96,17 +104,17 @@ cp .env.example .env
 │  ExamAI.Application                         │
 │  ├── MedicalExamPipeline (Orchestrator)     │
 │  ├── DocumentParserAgent                    │
-│  ├── ExtractionAgent (Ollama)               │
-│  ├── ValidationAgent                        │
+│  ├── ExtractionAgent (Ollama)              │
+│  ├── ValidationAgent                       │
 │  └── NormalizationAgent                     │
 └──────────────────┬──────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────┐
 │  ExamAI.Infrastructure                      │
-│  ├── Parsers (PDF, Word, Excel)             │
-│  ├── Repositories (EF Core)                 │
-│  └── Services                               │
+│  ├── Parsers (PDF, Word, Excel)            │
+│  ├── Repositories (EF Core)                │
+│  └── Services (Hash)                       │
 └──────────────────┬──────────────────────────┘
                    │
                    ▼
@@ -121,15 +129,15 @@ cp .env.example .env
 ExamAI/
 ├── src/
 │   ├── ExamAI.Api/              # REST API + Swagger
-│   ├── ExamAI.Application/      # Pipeline + Agents
+│   ├── ExamAI.Application/      # Pipeline + Agents + DTOs
 │   ├── ExamAI.Domain/           # Entities + Interfaces
-│   └── ExamAI.Infrastructure/   # Parsers + Repository
+│   └── ExamAI.Infrastructure/   # Parsers + Repository + DbContext
 ├── test/
-│   └── ExamAI.Tests/            # Unit and integration tests
+│   └── ExamAI.Tests/            # Unit tests (105 tests)
 ├── docker/
-│   └── postgres/                # Docker PostgreSQL configurations
+│   └── postgres/                # PostgreSQL Docker configs
 ├── docker-compose.yml           # Docker orchestration
-├── .env.example                 # Environment variables example
+├── .env.example                 # Environment variables
 └── Makefile                     # Utility commands
 ```
 
@@ -142,7 +150,7 @@ ExamAI/
 | **Framework** | .NET | 10.0 |
 | **Database** | PostgreSQL | 16 |
 | **ORM** | Entity Framework Core | 10 |
-| **AI/LLM** | Ollama | llama3.1:70b |
+| **AI/LLM** | Ollama | phi4:14b / llama3.1:8b |
 | **PDF Parser** | iText7 | 9.5.0 |
 | **Word Parser** | DocumentFormat.OpenXml | 3.4.1 |
 | **Excel Parser** | EPPlus | 8.4.1 |
@@ -157,9 +165,9 @@ ExamAI/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/process-and-save` | Process and save exam (synchronous) |
-| `GET` | `/api/exams/paciente/{cpf}` | Search exams by CPF |
-| `POST` | `/api/exams/reprocess/{documentoId}` | Reprocess failed document |
-| `DELETE` | `/api/exams/{documentoId}` | Delete document |
+| `GET` | `/api/exams` | List all exams with pagination and filters |
+| `GET` | `/api/exams/patient/{cpf}` | Search exams by CPF |
+| `DELETE` | `/api/exams/{documentId}` | Delete document |
 
 ### Health Checks
 
@@ -177,15 +185,24 @@ ExamAI/
 curl -X POST http://localhost:5076/api/process-and-save \
   -F "file=@exam.pdf"
 
-# Search exams by CPF
-curl "http://localhost:5076/api/exams/paciente/12345678900"
+# List all exams (paginated, 100 max per page)
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+
+# Search by patient name
+curl "http://localhost:5076/api/exams?patientName=Silva"
+
+# Search by CPF
+curl "http://localhost:5076/api/exams/patient/12345678900"
+
+# Delete document
+curl -X DELETE http://localhost:5076/api/exams/{documentId}
 ```
 
 ---
 
 ## 🧪 Tests
 
-The project includes unit and integration tests:
+The project includes 105 unit tests:
 
 ```bash
 # Run all tests
@@ -195,18 +212,12 @@ dotnet test
 dotnet test --verbosity normal
 
 # Run specific tests
-dotnet test --filter "FullyQualifiedName~Integration"
+dotnet test --filter "FullyQualifiedName~ValidationAgent"
 ```
 
 ---
 
 ## 📖 Documentation
-
-### Setup Guides
-- **[QUICK-START.md](QUICK-START.md)** - 5-minute quick start
-- **[UPLOAD-TEST.md](UPLOAD-TEST.md)** - How to test uploads
-- **[DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)** - Manage failed documents
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Troubleshooting guide
 
 ### Docker
 - **[docker/README.md](docker/README.md)** - Complete Docker configuration
@@ -221,7 +232,7 @@ dotnet test --filter "FullyQualifiedName~Integration"
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and adjust as needed:
+Copy `.env.example` to `.env` and adjust:
 
 ```bash
 # PostgreSQL
@@ -232,8 +243,8 @@ POSTGRES_PORT=5432
 
 # Ollama
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:70b
-OLLAMA_TIMEOUT_SECONDS=180
+OLLAMA_MODEL=phi4:14b
+OLLAMA_TIMEOUT_SECONDS=300
 
 # API
 API_PORT=5076
@@ -247,7 +258,6 @@ ASPNETCORE_ENVIRONMENT=Development
 | API | http://localhost:5076 | - |
 | Swagger | http://localhost:5076/swagger | - |
 | PostgreSQL | localhost:5432 | postgres / postgres123 |
-| pgAdmin | http://localhost:5050 | admin@examai.com / admin123 |
 
 ---
 
@@ -256,20 +266,20 @@ ASPNETCORE_ENVIRONMENT=Development
 ### Main Tables
 
 ```sql
-pacientes           -- Patient data
-documentos          -- Uploaded files (with SHA256 hash)
-tipos_exame         -- Exam types catalog
-exames              -- Performed exams
-resultados_exame    -- Results for each parameter
+patients            -- Patient data (with CPF)
+documents           -- Uploaded files (with SHA256 hash)
+exam_types          -- Exam types catalog (seeded)
+exams               -- Performed exams
+exam_results        -- Results for each parameter
 ```
 
 ### Relationships
 
 ```
-pacientes (1) ─── (N) documentos
-documentos (1) ─── (N) exames
-tipos_exame (1) ─── (N) exames
-exames (1) ─── (N) resultados_exame
+patients (1) ─── (N) documents
+documents (1) ─── (N) exams
+exam_types (1) ─── (N) exams
+exams (1) ─── (N) exam_results
 ```
 
 ---
@@ -278,15 +288,12 @@ exames (1) ─── (N) resultados_exame
 
 ```bash
 make help           # Show help
-make docker-up      # Start PostgreSQL + pgAdmin
+make docker-up      # Start PostgreSQL + API
 make docker-down    # Stop Docker
-make migrate        # Apply migrations
 make run            # Start API
 make build          # Build project
 make test           # Run tests
 make clean          # Clean build artifacts
-make reset          # Complete reset (⚠️ deletes data!)
-make setup          # Initial complete setup
 make status         # Container status
 ```
 
@@ -301,28 +308,38 @@ make status         # Container status
 | 3 | AI Extraction (LLM + Pipeline) | ✅ Complete |
 | 4 | Persistence (Database + Hash) | ✅ Complete |
 | 5 | REST API (Endpoints + Swagger) | ✅ Complete |
+| 6 | CPF Extraction & Patient Matching | ✅ Complete |
 | **MVP** | | **✅ 100%** |
 
 **Metrics:**
-- 20 User Stories implemented
-- 7 production endpoints
+- 22 User Stories implemented
+- 5 production endpoints
 - ~2,500 lines of code
+- 105 unit tests (88% coverage)
 - Build: 0 errors, 0 warnings
 
 ---
 
 ## 📝 Changelog
 
+### v1.4.0 (2026-02-11)
+- ✅ CPF extraction from documents via AI
+- ✅ Automatic patient matching by CPF (priority) or name
+- ✅ New endpoint: `GET /api/exams` with pagination and filters
+- ✅ Removed: pgAdmin (Docker compose)
+- ✅ Removed: `/api/exams/reprocess/{documentId}` endpoint
+- ✅ Ollama timeout increased to 300 seconds
+- ✅ Improved PDF parsing with multiple strategies
+- ✅ Database: nullable CPF field for patients
+
 ### v1.3.0 (2026-02-04)
-- ✅ Simplified API: removed `cpf` and `nomePaciente` parameters from `/api/process-and-save`
-- ✅ Auto-extraction: Patient data is now fully extracted from the document by AI
-- ✅ Graceful defaults: Unidentified patients get `nome: "Paciente não identificado"` and `cpf: null`
-- ✅ Production focus: Only 7 essential endpoints for production use
-- ✅ Database update: `documentos.paciente_id` is now nullable
+- ✅ Simplified API: removed `cpf` and `nomePaciente` parameters from upload
+- ✅ Auto-extraction: Patient data fully extracted from document by AI
+- ✅ Graceful defaults for unidentified patients
+- ✅ Production focus: essential endpoints only
 
 ### v1.0.0 (2026-02-03)
 - ✅ Initial MVP release
-- ✅ 20 User Stories implemented
 - ✅ Complete end-to-end processing pipeline
 - ✅ Production-ready REST API
 
@@ -334,8 +351,6 @@ make status         # Container status
 - LinkedIn: [linkedin.com/in/farias-dev](https://linkedin.com/in/farias-dev)
 - Email: adjaircfarias@gmail.com
 - GitHub: [github.com/adjaircfarias](https://github.com/adjaircfarias)
-
-Developed with: Clawdex 🔍
 
 ---
 
@@ -350,7 +365,7 @@ This project is licensed under the MIT License.
 </p>
 
 <p align="center">
-  Last update: February 2026 • Version 1.3.0 • Production Ready
+  Last update: February 2026 • Version 1.4.0 • Production Ready
 </p>
 
 ---
@@ -362,38 +377,41 @@ This project is licensed under the MIT License.
 ### Pré-requisitos
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Ollama](https://ollama.com) com modelo `llama3.1:70b`
+- [Ollama](https://ollama.com) com modelo `phi4:14b` ou `llama3.1:8b`
 
-### Opção 1: Docker Compose (Recomendado)
+### Docker Compose (Recomendado)
 
 ```bash
-# 1. Iniciar PostgreSQL + pgAdmin
+# Iniciar PostgreSQL + API
 docker-compose up -d
 
-# 2. Aplicar migrations
-cd src/ExamAI.Api
-dotnet ef database update
-
-# 3. Iniciar API
-dotnet run
-
-# 4. Acessar Swagger
+# Acessar Swagger
 # http://localhost:5076/swagger
 ```
 
-### Opção 2: Usando Makefile
+### Desenvolvimento Local
 
 ```bash
-make setup  # Setup completo
-make run    # Iniciar API
+# Copiar variáveis de ambiente
+cp .env.example .env
+
+# Iniciar PostgreSQL (via Docker)
+docker-compose up -d postgres
+
+# Aplicar migrations e rodar API
+cd src/ExamAI.Api
+dotnet ef database update
+dotnet run
 ```
 
-### Configuração
-
-Copie o arquivo de exemplo de variáveis de ambiente:
+### Configuração do Ollama
 
 ```bash
-cp .env.example .env
+# Instalar modelo
+ollama pull phi4:14b
+
+# Ou usar modelo menor (8B parâmetros)
+ollama pull llama3.1:8b
 ```
 
 ---
@@ -402,8 +420,8 @@ cp .env.example .env
 
 ### Pipeline Completo
 - **Upload** de documentos (PDF, Word, Excel) - máximo 10MB
-- **Extração** de texto com parsers especializados
-- **Processamento** com IA local (Ollama LLM)
+- **Extração** de texto com parsers especializados (iText7, EPPlus, OpenXml)
+- **Processamento** com IA local (Ollama LLM - phi4:14b ou llama3.1:8b)
 - **Validação** de dados (15+ regras de consistência)
 - **Normalização** de nomenclatura (30+ mapeamentos)
 - **Persistência** em PostgreSQL com ACID
@@ -412,6 +430,11 @@ cp .env.example .env
 - Hash SHA256 para todos os documentos
 - Retorno instantâneo (< 100ms) para duplicatas
 - Economia de recursos de LLM
+
+### Extração de CPF
+- IA extrai CPF do paciente dos documentos
+- Busca automática de paciente por CPF ou nome
+- Campo CPF nullable no banco de dados
 
 ---
 
@@ -424,7 +447,7 @@ cp .env.example .env
                    │ HTTP/REST
                    ▼
 ┌─────────────────────────────────────────────┐
-│  ExamAI.Api (Controllers + Swagger)         │
+│  ExamAI.Api (Minimal API + Swagger)         │
 └──────────────────┬──────────────────────────┘
                    │
                    ▼
@@ -432,7 +455,7 @@ cp .env.example .env
 │  ExamAI.Application                         │
 │  ├── MedicalExamPipeline (Orquestrador)     │
 │  ├── DocumentParserAgent                    │
-│  ├── ExtractionAgent (Ollama)               │
+│  ├── ExtractionAgent (Ollama)                │
 │  ├── ValidationAgent                        │
 │  └── NormalizationAgent                     │
 └──────────────────┬──────────────────────────┘
@@ -440,9 +463,9 @@ cp .env.example .env
                    ▼
 ┌─────────────────────────────────────────────┐
 │  ExamAI.Infrastructure                      │
-│  ├── Parsers (PDF, Word, Excel)             │
+│  ├── Parsers (PDF, Word, Excel)            │
 │  ├── Repositories (EF Core)                 │
-│  └── Services                               │
+│  └── Services (Hash)                        │
 └──────────────────┬──────────────────────────┘
                    │
                    ▼
@@ -457,15 +480,15 @@ cp .env.example .env
 ExamAI/
 ├── src/
 │   ├── ExamAI.Api/              # REST API + Swagger
-│   ├── ExamAI.Application/      # Pipeline + Agents
+│   ├── ExamAI.Application/      # Pipeline + Agents + DTOs
 │   ├── ExamAI.Domain/           # Entidades + Interfaces
-│   └── ExamAI.Infrastructure/   # Parsers + Repository
+│   └── ExamAI.Infrastructure/   # Parsers + Repository + DbContext
 ├── test/
-│   └── ExamAI.Tests/            # Testes unitários e integração
+│   └── ExamAI.Tests/            # Testes unitários (105 testes)
 ├── docker/
 │   └── postgres/                # Configurações Docker PostgreSQL
 ├── docker-compose.yml           # Orquestração Docker
-├── .env.example                 # Variáveis de ambiente exemplo
+├── .env.example                 # Variáveis de ambiente
 └── Makefile                     # Comandos utilitários
 ```
 
@@ -478,7 +501,7 @@ ExamAI/
 | **Framework** | .NET | 10.0 |
 | **Banco de Dados** | PostgreSQL | 16 |
 | **ORM** | Entity Framework Core | 10 |
-| **IA/LLM** | Ollama | llama3.1:70b |
+| **IA/LLM** | Ollama | phi4:14b / llama3.1:8b |
 | **PDF Parser** | iText7 | 9.5.0 |
 | **Word Parser** | DocumentFormat.OpenXml | 3.4.1 |
 | **Excel Parser** | EPPlus | 8.4.1 |
@@ -493,9 +516,9 @@ ExamAI/
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | `POST` | `/api/process-and-save` | Processar e salvar exame (síncrono) |
-| `GET` | `/api/exams/paciente/{cpf}` | Buscar exames por CPF |
-| `POST` | `/api/exams/reprocess/{documentoId}` | Reprocessar documento falho |
-| `DELETE` | `/api/exams/{documentoId}` | Deletar documento |
+| `GET` | `/api/exams` | Listar todos os exames com paginação e filtros |
+| `GET` | `/api/exams/patient/{cpf}` | Buscar exames por CPF |
+| `DELETE` | `/api/exams/{documentId}` | Deletar documento |
 
 ### Health Checks
 
@@ -513,15 +536,24 @@ ExamAI/
 curl -X POST http://localhost:5076/api/process-and-save \
   -F "file=@exame.pdf"
 
-# Buscar exames por CPF
-curl "http://localhost:5076/api/exams/paciente/12345678900"
+# Listar todos os exames (paginado, 100 máx por página)
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+
+# Buscar por nome do paciente
+curl "http://localhost:5076/api/exams?patientName=Silva"
+
+# Buscar por CPF
+curl "http://localhost:5076/api/exams/patient/12345678900"
+
+# Deletar documento
+curl -X DELETE http://localhost:5076/api/exams/{documentId}
 ```
 
 ---
 
 ## 🧪 Testes
 
-O projeto inclui testes unitários e de integração:
+O projeto inclui 105 testes unitários:
 
 ```bash
 # Executar todos os testes
@@ -531,18 +563,12 @@ dotnet test
 dotnet test --verbosity normal
 
 # Executar testes específicos
-dotnet test --filter "FullyQualifiedName~Integration"
+dotnet test --filter "FullyQualifiedName~ValidationAgent"
 ```
 
 ---
 
 ## 📖 Documentação
-
-### Guias de Setup
-- **[QUICK-START.md](QUICK-START.md)** - Guia rápido de 5 minutos
-- **[UPLOAD-TEST.md](UPLOAD-TEST.md)** - Como testar uploads
-- **[DUPLICATE-FAILED-DOCS.md](DUPLICATE-FAILED-DOCS.md)** - Gerenciar documentos falhos
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solução de problemas
 
 ### Docker
 - **[docker/README.md](docker/README.md)** - Configuração Docker completa
@@ -557,7 +583,7 @@ dotnet test --filter "FullyQualifiedName~Integration"
 
 ### Variáveis de Ambiente
 
-Copie `.env.example` para `.env` e ajuste conforme necessário:
+Copie `.env.example` para `.env` e ajuste:
 
 ```bash
 # PostgreSQL
@@ -568,8 +594,8 @@ POSTGRES_PORT=5432
 
 # Ollama
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:70b
-OLLAMA_TIMEOUT_SECONDS=180
+OLLAMA_MODEL=phi4:14b
+OLLAMA_TIMEOUT_SECONDS=300
 
 # API
 API_PORT=5076
@@ -583,7 +609,6 @@ ASPNETCORE_ENVIRONMENT=Development
 | API | http://localhost:5076 | - |
 | Swagger | http://localhost:5076/swagger | - |
 | PostgreSQL | localhost:5432 | postgres / postgres123 |
-| pgAdmin | http://localhost:5050 | admin@examai.com / admin123 |
 
 ---
 
@@ -592,20 +617,20 @@ ASPNETCORE_ENVIRONMENT=Development
 ### Tabelas Principais
 
 ```sql
-pacientes           -- Dados do paciente
-documentos          -- Arquivos uploadados (com hash SHA256)
-tipos_exame         -- Catálogo de tipos de exame
-exames              -- Exames realizados
-resultados_exame    -- Resultados de cada parâmetro
+patients            -- Dados do paciente (com CPF)
+documents           -- Arquivos uploadados (com hash SHA256)
+exam_types          -- Catálogo de tipos de exame (seeded)
+exams               -- Exames realizados
+exam_results        -- Resultados de cada parâmetro
 ```
 
 ### Relacionamentos
 
 ```
-pacientes (1) ─── (N) documentos
-documentos (1) ─── (N) exames
-tipos_exame (1) ─── (N) exames
-exames (1) ─── (N) resultados_exame
+patients (1) ─── (N) documents
+documents (1) ─── (N) exams
+exam_types (1) ─── (N) exams
+exams (1) ─── (N) exam_results
 ```
 
 ---
@@ -614,15 +639,12 @@ exames (1) ─── (N) resultados_exame
 
 ```bash
 make help           # Mostrar ajuda
-make docker-up      # Iniciar PostgreSQL + pgAdmin
+make docker-up      # Iniciar PostgreSQL + API
 make docker-down    # Parar Docker
-make migrate        # Aplicar migrations
 make run            # Iniciar API
 make build          # Build do projeto
 make test           # Executar testes
 make clean          # Limpar build artifacts
-make reset          # Reset completo (⚠️ apaga dados!)
-make setup          # Setup inicial completo
 make status         # Status dos containers
 ```
 
@@ -637,29 +659,39 @@ make status         # Status dos containers
 | 3 | AI Extraction (LLM + Pipeline) | ✅ Completo |
 | 4 | Persistence (Database + Hash) | ✅ Completo |
 | 5 | REST API (Endpoints + Swagger) | ✅ Completo |
+| 6 | Extração de CPF e Busca de Paciente | ✅ Completo |
 | **MVP** | | **✅ 100%** |
 
 **Métricas:**
-- 20 User Stories implementadas
-- 7 endpoints de produção
+- 22 User Stories implementadas
+- 5 endpoints de produção
 - ~2.500 linhas de código
+- 105 testes unitários (88% cobertura)
 - Build: 0 erros, 0 warnings
 
 ---
 
 ## 📝 Changelog
 
+### v1.4.0 (2026-02-11)
+- ✅ Extração de CPF dos documentos via IA
+- ✅ Busca automática de pacientes por CPF (prioridade) ou nome
+- ✅ Novo endpoint: `GET /api/exams` com paginação e filtros
+- ✅ Removido: pgAdmin (Docker compose)
+- ✅ Removido: endpoint `/api/exams/reprocess/{documentId}`
+- ✅ Timeout do Ollama aumentado para 300 segundos
+- ✅ Melhorado parsing de PDF com múltiplas estratégias
+- ✅ Banco: campo CPF nullable para pacientes
+
 ### v1.3.0 (2026-02-04)
-- ✅ API simplificada: removidos parâmetros `cpf` e `nomePaciente`
+- ✅ API simplificada: removidos parâmetros `cpf` e `nomePaciente` do upload
 - ✅ Extração automática de dados do paciente via IA
-- ✅ Tratamento de pacientes não identificados
-- ✅ Apenas 7 endpoints essenciais para produção
-- ✅ Campo `documentos.paciente_id` nullable
+- ✅ Tratamento graceful para pacientes não identificados
+- ✅ Foco em produção: apenas endpoints essenciais
 
 ### v1.0.0 (2026-02-03)
 - ✅ Lançamento inicial MVP
-- ✅ 20 User Stories implementadas
-- ✅ Pipeline end-to-end completo
+- ✅ Pipeline completo end-to-end
 - ✅ API REST pronta para produção
 
 ---
@@ -670,8 +702,6 @@ make status         # Status dos containers
 - LinkedIn: [linkedin.com/in/farias-dev](https://linkedin.com/in/farias-dev)
 - Email: adjaircfarias@gmail.com
 - GitHub: [github.com/adjaircfarias](https://github.com/adjaircfarias)
-
-Desenvolvido com: Clawdex 🔍
 
 ---
 
@@ -686,5 +716,5 @@ Este projeto está licenciado sob a Licença MIT.
 </p>
 
 <p align="center">
-  Última atualização: Fevereiro 2026 • Versão 1.3.0 • Pronto para Produção
+  Última atualização: Fevereiro 2026 • Versão 1.4.0 • Pronto para Produção
 </p>

@@ -38,7 +38,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=examai;Username=postgres;Password=postgres123
       Ollama__Url: http://host.docker.internal:11434
       Ollama__Model: phi4:14b
-      Ollama__TimeoutSeconds: 180
+      Ollama__TimeoutSeconds: 300
       Ollama__MaxTokens: 8192
     ports:
       - "5076:5076"

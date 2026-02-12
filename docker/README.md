@@ -1,59 +1,40 @@
 # 🐳 Docker Setup - ExamAI
 
-Configuração Docker para o PostgreSQL do projeto ExamAI.
+Docker configuration for the ExamAI project.
 
 ---
 
-## 📦 O que está incluído
+## 📦 What's Included
 
-- **PostgreSQL 16 Alpine** - Banco de dados otimizado
-- **pgAdmin 4** - Interface web para gerenciar o banco (opcional)
-- **Volumes persistentes** - Dados não são perdidos ao reiniciar
-- **Health checks** - Monitora saúde do banco
-- **Rede isolada** - Comunicação segura entre containers
+- **PostgreSQL 16 Alpine** - Optimized database
+- **Persistent volumes** - Data is not lost when restarting
+- **Health checks** - Monitors database health
+- **Isolated network** - Secure communication between containers
+- **ExamAI API** - Application container with all dependencies
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start Compose (
 
-### Opção 1: Docker Compose (Recomendado)
+### DockerRecommended)
 
 ```bash
-# Subir tudo (PostgreSQL + pgAdmin)
+# Start everything (PostgreSQL + API)
 docker-compose up -d
 
-# Ver logs
-docker-compose logs -f postgres
+# View logs
+docker-compose logs -f
 
-# Parar tudo
+# Stop everything
 docker-compose down
 
-# Parar e remover volumes (CUIDADO: apaga dados!)
+# Stop and remove volumes (CAUTION: deletes data!)
 docker-compose down -v
 ```
 
-### Opção 2: Docker Manual
-
-```bash
-# Build da imagem
-docker build -t examai-postgres ./docker/postgres
-
-# Rodar container
-docker run -d \
-  --name examai-postgres \
-  -e POSTGRES_DB=examai \
-  -e POSTGRES_PASSWORD=postgres123 \
-  -p 5432:5432 \
-  -v examai_data:/var/lib/postgresql/data \
-  examai-postgres
-
-# Ver logs
-docker logs -f examai-postgres
-```
-
 ---
 
-## 🔌 Conexão
+## 🔌 Connection
 
 ### Connection String
 
@@ -61,133 +42,126 @@ docker logs -f examai-postgres
 Host=localhost;Database=examai;Username=postgres;Password=postgres123;Port=5432
 ```
 
-### pgAdmin (se habilitado)
+### Inside Docker Network
 
-- **URL:** http://localhost:5050
-- **Email:** admin@examai.com
-- **Senha:** admin123
-
-**Adicionar servidor no pgAdmin:**
-1. Click com botão direito em "Servers" → "Register" → "Server"
-2. **General** → Name: `ExamAI`
-3. **Connection:**
-   - Host: `postgres` (dentro do Docker) ou `localhost` (fora do Docker)
-   - Port: `5432`
-   - Database: `examai`
-   - Username: `postgres`
-   - Password: `postgres123`
+```
+Host=postgres;Database=examai;Username=postgres;Password=postgres123;Port=5432
+```
 
 ---
 
-## 📊 Comandos Úteis
+## 📊 Useful Commands
 
-### Status dos containers
+### Container Status
 ```bash
 docker-compose ps
 ```
 
-### Logs em tempo real
+### Real-time Logs
 ```bash
+# All containers
 docker-compose logs -f
+
+# Only API
+docker-compose logs -f api
+
+# Only PostgreSQL
+docker-compose logs -f postgres
 ```
 
-### Entrar no container PostgreSQL
+### Enter PostgreSQL Container
 ```bash
 docker exec -it examai-postgres psql -U postgres -d examai
 ```
 
-### Backup do banco
+### Database Backup
 ```bash
 docker exec -t examai-postgres pg_dump -U postgres examai > backup.sql
 ```
 
-### Restaurar backup
+### Restore Backup
 ```bash
 docker exec -i examai-postgres psql -U postgres examai < backup.sql
 ```
 
-### Ver uso de recursos
+### Resource Usage
 ```bash
 docker stats examai-postgres
+docker stats examai-api
 ```
 
 ---
 
-## 🔧 Customização
+## 🔧 Customization
 
-### Alterar porta do PostgreSQL
+### Change PostgreSQL Port
 
 ```yaml
 # docker-compose.yml
 ports:
-  - "15432:5432"  # Usar porta 15432 no host
+  - "15432:5432"  # Use port 15432 on host
 ```
 
-### Alterar credenciais
+### Change Credentials
 
 ```yaml
 # docker-compose.yml
 environment:
-  POSTGRES_PASSWORD: sua_senha_segura
+  POSTGRES_PASSWORD: your_secure_password
 ```
 
-**Ou usar arquivo .env:**
+### Run Only PostgreSQL
 
 ```bash
-# .env
-POSTGRES_PASSWORD=sua_senha_segura
-```
-
-### Desabilitar pgAdmin
-
-```bash
-# Subir apenas PostgreSQL
+# Start only PostgreSQL
 docker-compose up -d postgres
+
+# Access from local development
+dotnet run
 ```
 
 ---
 
-## 🗂️ Estrutura de Arquivos
+## 📁 File Structure
 
 ```
 docker/
 ├── postgres/
-│   ├── Dockerfile              # Imagem customizada do PostgreSQL
+│   ├── Dockerfile              # Custom PostgreSQL image
 │   └── init/
-│       └── 01-init.sql         # Scripts de inicialização
-├── README.md                   # Esta documentação
-docker-compose.yml              # Orquestração dos serviços
-.env.example                    # Exemplo de variáveis de ambiente
+│       └── 01-init.sql       # Initialization scripts
+├── README.md                  # This documentation
+docker-compose.yml            # Service orchestration
+.env.example                  # Environment variables example
 ```
 
 ---
 
-## 🔒 Segurança
+## 🔒 Security
 
-### ⚠️ Para Produção:
+### ⚠️ For Production:
 
-1. **Alterar senhas padrão**
+1. **Change default passwords**
    ```bash
-   POSTGRES_PASSWORD=senha_forte_aqui
-   PGADMIN_PASSWORD=outra_senha_forte
+   POSTGRES_PASSWORD=strong_password_here
    ```
 
-2. **Usar secrets do Docker**
+2. **Use Docker secrets**
    ```yaml
    secrets:
      postgres_password:
        file: ./secrets/postgres_password.txt
    ```
 
-3. **Não expor portas publicamente**
+3. **Do not expose ports publicly**
    ```yaml
-   # Apenas para rede interna
+   # Only for internal network
    expose:
      - "5432"
-   # Sem "ports:"
+   # No "ports:" section
    ```
 
-4. **Usar certificados SSL**
+4. **Use SSL certificates**
    ```yaml
    command: >
      postgres
@@ -200,72 +174,85 @@ docker-compose.yml              # Orquestração dos serviços
 
 ## 🐛 Troubleshooting
 
-### PostgreSQL não inicia
+### PostgreSQL Doesn't Start
 
 ```bash
-# Ver logs detalhados
+# View detailed logs
 docker-compose logs postgres
 
-# Verificar health check
+# Check health check status
 docker inspect examai-postgres --format='{{.State.Health.Status}}'
 
-# Remover volumes e recriar
+# Remove volumes and recreate
 docker-compose down -v
 docker-compose up -d
 ```
 
-### Porta 5432 já está em uso
+### Port 5432 Already in Use
 
 ```bash
-# Descobrir o que está usando
+# Find what's using it
 netstat -ano | findstr :5432
 
-# Ou alterar porta no docker-compose.yml
+# Or change port in docker-compose.yml
 ports:
   - "15432:5432"
 ```
 
-### Dados não persistem
+### Data Doesn't Persist
 
 ```bash
-# Verificar volumes
+# Check volumes
 docker volume ls
 docker volume inspect examai_postgres_data
 
-# Garantir que volume está montado
+# Ensure volume is mounted
 docker inspect examai-postgres | grep -A 10 Mounts
 ```
 
-### pgAdmin não conecta ao PostgreSQL
-
-**Dentro do Docker:** Use hostname `postgres`  
-**Fora do Docker:** Use hostname `localhost`
+### API Can't Connect to PostgreSQL
 
 ```bash
-# Testar conectividade
+# Test PostgreSQL availability
 docker exec examai-postgres pg_isready -U postgres
+
+# Check network
+docker network inspect examai_examai-network
+```
+
+### Ollama Connection Issues
+
+```bash
+# Test Ollama availability
+curl http://localhost:11434/api/tags
+
+# Check if model is downloaded
+ollama list
+
+# Pull model if needed
+ollama pull phi4:14b
 ```
 
 ---
 
-## 📚 Recursos Adicionais
+## 📚 Additional Resources
 
 - [PostgreSQL Docs](https://www.postgresql.org/docs/)
 - [Docker Compose Docs](https://docs.docker.com/compose/)
-- [pgAdmin Docs](https://www.pgadmin.org/docs/)
+- [Ollama Docs](https://ollama.com/)
 
 ---
 
-## 🎯 Checklist de Setup
+## 🎯 Setup Checklist
 
-- [ ] Docker e Docker Compose instalados
-- [ ] Arquivo `.env` criado (copiar de `.env.example`)
-- [ ] `docker-compose up -d` executado
-- [ ] PostgreSQL acessível na porta 5432
-- [ ] Migrations aplicadas (`dotnet ef database update`)
-- [ ] Conexão testada via pgAdmin ou `psql`
+- [ ] Docker and Docker Compose installed
+- [ ] `.env` file created (copy from `.env.example`)
+- [ ] `docker-compose up -d` executed
+- [ ] PostgreSQL accessible on port 5432
+- [ ] Ollama model downloaded (phi4:14b or llama3.1:8b)
+- [ ] API accessible at http://localhost:5076
 
 ---
 
-**Desenvolvido por:** Adjair Farias + Clawdex 🔍  
-**Versão:** 1.1.0
+**Developed by:** Adjair Farias  
+**Version:** 1.4.0
