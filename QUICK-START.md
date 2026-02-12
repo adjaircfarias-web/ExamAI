@@ -40,13 +40,10 @@ cd ExamAI
 
 ---
 
-### 2️⃣ Start PostgreSQL (Docker)
+### 2️⃣ Start with Docker Compose
 
 ```bash
-# Option A: With script (Windows)
-.\scripts\docker-start.ps1
-
-# Option B: Direct command
+# Start everything (PostgreSQL + API)
 docker-compose up -d
 ```
 
@@ -59,51 +56,50 @@ docker-compose up -d
 ### 3️⃣ Download Ollama Model
 
 ```bash
-ollama pull llama3.1:70b
-```
+# Recommended: phi4:14b (~9GB)
+ollama pull phi4:14b
 
-⚠️ **Warning:** ~40GB download. May take time!
+# Or smaller model: llama3.1:8b (~5GB)
+ollama pull llama3.1:8b
+```
 
 ✅ **Verify:** `ollama list` should list the model
 
 ---
 
-### 4️⃣ Apply Migrations
+### 4️⃣ Access API
 
 ```bash
-cd src\ExamAI.Api
-dotnet ef database update
+# API is already running via Docker!
+# Just access:
+open http://localhost:5076/swagger
 ```
 
-✅ **Verify:** Should display "Done" at the end
+✅ **Verify:** Swagger UI should load
 
 ---
 
-### 5️⃣ Run API
+### 5️⃣ Test Health Endpoints
 
 ```bash
-dotnet run
-```
+# API Health
+curl http://localhost:5076/health
+# Expected: {"status":"healthy"}
 
-✅ **Verify:** 
-- Console should show: "Now listening on: http://localhost:5076"
-- Swagger: http://localhost:5076/swagger
+# Ollama Health
+curl http://localhost:5076/health/ollama
+# Expected: {"status":"healthy"}
+
+# Database Health
+curl http://localhost:5076/health/database
+# Expected: {"status":"healthy"}
+```
 
 ---
 
 ## 🎉 Ready! Now Test
 
-### Test 1: Health Check
-
-```bash
-curl http://localhost:5076/health
-```
-
-**Expected:** `{"status":"healthy"}`
-
----
-
-### Test 2: Upload Exam (Swagger UI)
+### Test 1: Upload Exam (Swagger UI)
 
 1. Open http://localhost:5076/swagger
 2. Expand `POST /api/process-and-save`
@@ -115,6 +111,22 @@ curl http://localhost:5076/health
 
 ---
 
+### Test 2: List All Exams
+
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+```
+
+---
+
+### Test 3: Search by CPF
+
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
+```
+
+---
+
 ## 🎯 Access Points
 
 | Service | URL | Credentials |
@@ -122,7 +134,6 @@ curl http://localhost:5076/health
 | **API** | http://localhost:5076 | - |
 | **Swagger** | http://localhost:5076/swagger | - |
 | **PostgreSQL** | localhost:5432 | postgres / postgres123 |
-| **pgAdmin** | http://localhost:5050 | admin@examai.com / admin123 |
 
 ---
 
@@ -160,14 +171,14 @@ curl http://localhost:11434/api/tags
 # Linux/Mac: ollama serve
 ```
 
-### Migrations fail
+### Container fails to start
 
 ```bash
-# Check if PostgreSQL is accessible
-docker exec -it examai-postgres psql -U postgres -d examai
+# Check API logs
+docker logs examai-api
 
-# If OK, try again
-dotnet ef database update --force
+# Check PostgreSQL logs
+docker logs examai-postgres
 ```
 
 ---
@@ -175,13 +186,8 @@ dotnet ef database update --force
 ## 🛑 Stop Everything
 
 ```bash
-# Stop API: Ctrl+C in terminal
-
-# Stop Docker
+# Stop Docker (including API)
 docker-compose down
-
-# Or with script
-.\scripts\docker-stop.ps1
 ```
 
 ---
@@ -198,11 +204,10 @@ After Quick Start is working:
 
 ## 💡 Tips
 
-- **First execution:** LLM may take 10-30s
+- **First execution:** LLM may take 10-30s for first request
 - **Development:** Use Swagger UI (easier than curl)
-- **View database:** Use pgAdmin (http://localhost:5050)
-- **Logs:** `docker-compose logs -f postgres`
-- **Reset:** `docker-compose down -v` (deletes data!)
+- **Logs:** `docker-compose logs -f api`
+- **Reset:** `docker-compose down -v` (deletes all data!)
 
 ---
 
@@ -215,10 +220,10 @@ After Quick Start is working:
 
 ---
 
-**Estimated time:** 10-15 minutes (except Ollama model download)
+**Estimated time:** 5-10 minutes (plus Ollama model download)
 
-**Developed by:** Adjair Farias + Clawdex 🔍  
-**Version:** 1.3.0
+**Developed by:** Adjair Farias  
+**Version:** 1.4.0
 
 ---
 
@@ -256,13 +261,10 @@ cd ExamAI
 
 ---
 
-### 2️⃣ Iniciar PostgreSQL (Docker)
+### 2️⃣ Iniciar com Docker Compose
 
 ```bash
-# Opção A: Com script (Windows)
-.\scripts\docker-start.ps1
-
-# Opção B: Comando direto
+# Iniciar tudo (PostgreSQL + API)
 docker-compose up -d
 ```
 
@@ -275,59 +277,74 @@ docker-compose up -d
 ### 3️⃣ Baixar Modelo Ollama
 
 ```bash
-ollama pull llama3.1:70b
-```
+# Recomendado: phi4:14b (~9GB)
+ollama pull phi4:14b
 
-⚠️ **Atenção:** Download de ~40GB. Pode levar tempo!
+# Ou modelo menor: llama3.1:8b (~5GB)
+ollama pull llama3.1:8b
+```
 
 ✅ **Verificar:** `ollama list` deve listar o modelo
 
 ---
 
-### 4️⃣ Aplicar Migrations
+### 4️⃣ Acessar API
 
 ```bash
-cd src\ExamAI.Api
-dotnet ef database update
+# A API já está rodando via Docker!
+# Basta acessar:
+open http://localhost:5076/swagger
 ```
 
-✅ **Verificar:** Deve exibir "Done" ao final
+✅ **Verificar:** Swagger UI deve carregar
 
 ---
 
-### 5️⃣ Rodar a API
+### 5️⃣ Testar Health Endpoints
 
 ```bash
-dotnet run
-```
+# Health da API
+curl http://localhost:5076/health
+# Esperado: {"status":"healthy"}
 
-✅ **Verificar:** 
-- Console deve mostrar: "Now listening on: http://localhost:5076"
-- Swagger: http://localhost:5076/swagger
+# Health do Ollama
+curl http://localhost:5076/health/ollama
+# Esperado: {"status":"healthy"}
+
+# Health do Banco
+curl http://localhost:5076/health/database
+# Esperado: {"status":"healthy"}
+```
 
 ---
 
 ## 🎉 Pronto! Agora Teste
 
-### Teste 1: Health Check
-
-```bash
-curl http://localhost:5076/health
-```
-
-**Esperado:** `{"status":"healthy"}`
-
----
-
-### Teste 2: Upload de Exame (Swagger UI)
+### Teste 1: Upload de Exame (Swagger UI)
 
 1. Abrir http://localhost:5076/swagger
 2. Expandir `POST /api/process-and-save`
-3. Click em "Try it out"
+3. Clicar em "Try it out"
 4. Fazer upload de um PDF de exame
-5. Click "Execute"
+5. Clicar em "Execute"
 
 **Esperado:** Status 200 OK com `documentId` e dados extraídos
+
+---
+
+### Teste 2: Listar Todos os Exames
+
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+```
+
+---
+
+### Teste 3: Buscar por CPF
+
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
+```
 
 ---
 
@@ -338,7 +355,6 @@ curl http://localhost:5076/health
 | **API** | http://localhost:5076 | - |
 | **Swagger** | http://localhost:5076/swagger | - |
 | **PostgreSQL** | localhost:5432 | postgres / postgres123 |
-| **pgAdmin** | http://localhost:5050 | admin@examai.com / admin123 |
 
 ---
 
@@ -358,7 +374,7 @@ docker-compose logs postgres
 
 ```bash
 # Parar PostgreSQL local
-# Windows: services.msc → PostgreSQL → Stop
+# Windows: services.msc → PostgreSQL → Parar
 
 # Ou alterar porta no docker-compose.yml
 ports:
@@ -376,14 +392,14 @@ curl http://localhost:11434/api/tags
 # Linux/Mac: ollama serve
 ```
 
-### Migrations falham
+### Container falha ao iniciar
 
 ```bash
-# Verificar se PostgreSQL está acessível
-docker exec -it examai-postgres psql -U postgres -d examai
+# Verificar logs da API
+docker logs examai-api
 
-# Se OK, tentar novamente
-dotnet ef database update --force
+# Verificar logs do PostgreSQL
+docker logs examai-postgres
 ```
 
 ---
@@ -391,13 +407,8 @@ dotnet ef database update --force
 ## 🛑 Parar Tudo
 
 ```bash
-# Parar API: Ctrl+C no terminal
-
-# Parar Docker
+# Parar Docker (incluindo API)
 docker-compose down
-
-# Ou com script
-.\scripts\docker-stop.ps1
 ```
 
 ---
@@ -414,11 +425,10 @@ Depois do Quick Start funcionando:
 
 ## 💡 Dicas
 
-- **Primeira execução:** LLM pode demorar 10-30s
+- **Primeira execução:** LLM pode demorar 10-30s na primeira requisição
 - **Desenvolvimento:** Use Swagger UI (mais fácil que curl)
-- **Ver banco:** Use pgAdmin (http://localhost:5050)
-- **Logs:** `docker-compose logs -f postgres`
-- **Reset:** `docker-compose down -v` (apaga dados!)
+- **Logs:** `docker-compose logs -f api`
+- **Reset:** `docker-compose down -v` (apaga todos os dados!)
 
 ---
 
@@ -431,7 +441,7 @@ Depois do Quick Start funcionando:
 
 ---
 
-**Tempo estimado:** 10-15 minutos (exceto download do modelo Ollama)
+**Tempo estimado:** 5-10 minutos (mais download do modelo Ollama)
 
-**Desenvolvido por:** Adjair Farias + Clawdex 🔍  
-**Versão:** 1.3.0
+**Desenvolvido por:** Adjair Farias  
+**Versão:** 1.4.0

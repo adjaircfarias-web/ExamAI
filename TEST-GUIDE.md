@@ -17,11 +17,10 @@
 
 Before testing, ensure:
 
-- [x] Docker Desktop running (green icon)
+- [x] Docker Desktop running
 - [x] PostgreSQL started (`docker-compose up -d`)
-- [x] Migrations applied (`dotnet ef database update`)
-- [x] Ollama running with llama3.1:70b
-- [x] API running (`dotnet run`)
+- [x] Ollama running with phi4:14b or llama3.1:8b
+- [x] API running (`docker-compose up -d` or `dotnet run`)
 
 ---
 
@@ -32,17 +31,14 @@ Before testing, ensure:
 ```bash
 # 1. General health
 curl http://localhost:5076/health
-
 # Expected: {"status":"healthy"}
 
 # 2. Ollama health
 curl http://localhost:5076/health/ollama
-
 # Expected: {"status":"healthy","service":"Ollama",...}
 
 # 3. Database health
 curl http://localhost:5076/health/database
-
 # Expected: {"status":"healthy","service":"PostgreSQL",...}
 ```
 
@@ -99,20 +95,26 @@ http://localhost:5076/swagger
   "duplicate": false,
   "documentId": "550e8400-e29b-41d4-a716-446655440000",
   "patientId": "6a545cd7-...",
-  "fileName": "exam.pdf",
+  "fileName": "exame.pdf",
   "fileHash": "abc123...",
   "data": {
     "patient": {
-      "name": "John Doe"
+      "name": "João Silva",
+      "cpf": "12345678900",
+      "birthDate": "1985-03-15"
     },
     "exams": [
       {
-        "type": "Blood Test",
-        "value": 150,
-        "unit": "mg/dL",
+        "type": "Hemograma Completo",
+        "value": 5.2,
+        "unit": "milhões/mm³",
         "status": "normal"
       }
     ]
+  },
+  "validation": {
+    "isValid": true,
+    "warningCount": 0
   },
   "stats": {
     "duration": 12500,
@@ -124,116 +126,26 @@ http://localhost:5076/swagger
 
 ---
 
-## 🎯 Test 4: Search Exams by CPF
+## 🎯 Test 4: List All Exams
 
-### Via Swagger:
+### Get All Exams
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+```
 
-1. **Expand:** `GET /api/exams/patient/{cpf}`
+### Filter by Patient Name
+```bash
+curl "http://localhost:5076/api/exams?patientName=Silva"
+```
 
-2. **Click:** "Try it out"
-
-3. **Fill cpf:** `12345678900`
-
-4. **Click:** "Execute"
-
-**Expected response:**
-
-```json
-{
-  "success": true,
-  "patient": {
-    "name": "John Doe",
-    "cpf": "12345678900"
-  },
-  "exams": [
-    {
-      "id": "...",
-      "type": "Total Cholesterol",
-      "collectionDate": "2026-02-03",
-      "results": [
-        {
-          "parameter": "Total Cholesterol",
-          "value": 210,
-          "unit": "mg/dL",
-          "status": "high"
-        }
-      ]
-    }
-  ]
-}
+### Search by CPF
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
 ```
 
 ---
 
-## 🎯 Test 5: Verify Data in pgAdmin
-
-### Access pgAdmin:
-
-```
-http://localhost:5050
-```
-
-**Login:**
-- Email: `admin@examai.com`
-- Password: `admin123`
-
-### Connect to PostgreSQL:
-
-1. **Right click on "Servers"** → "Register" → "Server"
-
-2. **General tab:**
-   - Name: `ExamAI`
-
-3. **Connection tab:**
-   - Host: `postgres` (inside Docker) or `localhost` (outside)
-   - Port: `5432`
-   - Database: `examai`
-   - Username: `postgres`
-   - Password: `postgres123`
-
-4. **Click "Save"**
-
-### View Tables:
-
-```
-Servers
-└── ExamAI
-    └── Databases
-        └── examai
-            └── Schemas
-                └── public
-                    └── Tables
-                        ├── patients
-                        ├── documents
-                        ├── exam_types
-                        ├── exams
-                        └── exam_results
-```
-
-### Execute Query:
-
-```sql
--- View all patients
-SELECT * FROM patients;
-
--- View all documents
-SELECT * FROM documents;
-
--- View extracted exams
-SELECT 
-    e.id,
-    t.name as exam_type,
-    e.collection_date,
-    COUNT(r.id) as total_results
-FROM exams e
-LEFT JOIN exam_types t ON e.exam_type_id = t.id
-LEFT JOIN exam_results r ON r.exam_id = e.id
-GROUP BY e.id, t.name, e.collection_date;
-```
-
----
-
-## 🎯 Test 6: Duplicate Upload (Cache)
+## 🎯 Test 5: Duplicate Upload (Cache)
 
 ### Via Swagger:
 
@@ -245,14 +157,13 @@ GROUP BY e.id, t.name, e.collection_date;
    - Cached result
 
 **Expected response:**
-
 ```json
 {
   "success": true,
   "duplicate": true,
   "documentId": "550e8400-...",
   "status": "completed",
-  "message": "Document already processed"
+  "message": "Document already processed. Returning cached result."
 }
 ```
 
@@ -260,7 +171,7 @@ GROUP BY e.id, t.name, e.collection_date;
 
 ---
 
-## 🎯 Test 7: Delete Document
+## 🎯 Test 6: Delete Document
 
 ### Via Swagger:
 
@@ -282,29 +193,6 @@ GROUP BY e.id, t.name, e.collection_date;
 
 ---
 
-## 🎯 Test 8: Reprocess Failed Document
-
-### Via Swagger:
-
-1. **Expand:** `POST /api/exams/reprocess/{documentId}`
-
-2. **Click:** "Try it out"
-
-3. **Paste failed documentId**
-
-**Expected response:**
-```json
-{
-  "success": false,
-  "error": "Cannot reprocess: original file not stored.",
-  "suggestion": "Use DELETE then upload again"
-}
-```
-
-**Note:** File storage not implemented. Use DELETE + upload again.
-
----
-
 ## 📊 Complete Test Checklist
 
 - [ ] ✅ Health checks (general, ollama, database)
@@ -312,11 +200,12 @@ GROUP BY e.id, t.name, e.collection_date;
 - [ ] ✅ PDF upload
 - [ ] ✅ Word (.docx) upload
 - [ ] ✅ Excel (.xlsx) upload
+- [ ] ✅ CPF extraction from document
+- [ ] ✅ List all exams
+- [ ] ✅ Filter by patient name
 - [ ] ✅ Search by CPF
 - [ ] ✅ Duplicate upload (cache)
-- [ ] ✅ Verify data in pgAdmin
 - [ ] ✅ Delete document
-- [ ] ✅ Reprocess endpoint
 
 ---
 
@@ -331,18 +220,15 @@ GROUP BY e.id, t.name, e.collection_date;
 # Verify API is running
 curl http://localhost:5076/health
 
-# If not, run
-cd src/ExamAI.Api
-dotnet run
-
-# Reload Swagger (Ctrl+F5)
+# Check Docker status
+docker-compose ps
 ```
 
 ---
 
 ### Upload takes too long (> 1 minute)
 
-**Cause:** llama3.1:70b model is heavy
+**Cause:** phi4:14b or llama3.1:70b model is heavy
 
 **Normal:**
 - First inference: 20-30s (loads model)
@@ -363,8 +249,9 @@ dotnet run
    - Word/Excel with structured data
 
 2. **API logs:**
-   - Check output in terminal
-   - Look for errors
+   ```bash
+   docker logs examai-api
+   ```
 
 3. **Ollama responding:**
    ```bash
@@ -373,52 +260,14 @@ dotnet run
 
 ---
 
-### pgAdmin doesn't connect
+### CPF not extracted from document
 
-**Verify hostname:**
+**Cause:** Document doesn't contain CPF or AI didn't extract it
 
-- **Inside Docker:** Use `postgres`
-- **Outside Docker:** Use `localhost`
-
-```bash
-# Test connectivity
-docker exec examai-postgres pg_isready -U postgres
-```
-
----
-
-## 📸 Example Documents to Test
-
-### PDF Exam
-
-You can create a simple PDF with data like:
-
-```
-BLOOD TEST
-
-Patient: John Doe
-CPF: 123.456.789-00
-Birth Date: 05/15/1980
-Collection Date: 02/03/2026
-
-Requesting Physician: Dr. Maria Santos
-Laboratory: LabMed
-
-RESULTS:
-
-Complete Blood Count
-- Hemoglobin: 14.5 g/dL (Reference: 13-17)
-- White Cells: 7000 /mm³ (Reference: 4000-10000)
-
-Lipid Panel
-- Total Cholesterol: 210 mg/dL (Reference: < 200)
-- HDL: 45 mg/dL (Reference: > 40)
-- LDL: 130 mg/dL (Reference: < 100)
-- Triglycerides: 175 mg/dL (Reference: < 150)
-
-Glucose
-- Fasting Glucose: 95 mg/dL (Reference: 70-100)
-```
+**Solution:**
+- Verify document contains CPF (with dashes or without)
+- Check API logs for extraction details
+- CPF is optional - patient name is always extracted
 
 ---
 
@@ -426,36 +275,23 @@ Glucose
 
 If all tests passed:
 
-✅ **System 100% functional!**
-✅ **Ready for production use!**
-✅ **Can process real exams!**
+✅ **System 100% functional!**  
+✅ **Ready for production use!**  
+✅ **Can process real exams with CPF extraction!**
 
 ---
 
-## 📚 Next Steps
+## 📚 Related Documentation
 
-After successful testing:
-
-1. ✅ Process real medical exams
-2. ✅ Adjust prompts if needed (ExtractionAgent.cs)
-3. ✅ Configure authentication (if production)
-4. ✅ Deploy (Docker Compose makes it easy!)
+- [README.md](README.md) - Complete documentation
+- [QUICK-START.md](QUICK-START.md) - Quick start guide
+- [UPLOAD-TEST.md](UPLOAD-TEST.md) - Upload testing guide
 
 ---
 
-## 💡 Testing Tips
-
-1. **Start simple:** Test health checks first
-2. **Use Swagger:** It's easier than curl
-3. **Watch the logs:** API terminal shows what's happening
-4. **Test duplicates:** See cache working
-5. **Use pgAdmin:** Visualize saved data
-
----
-
-**Developed by:** Adjair Farias + Clawdex 🔍  
-**Version:** 1.3.0  
-**Date:** 05/02/2026
+**Developed by:** Adjair Farias  
+**Version:** 1.4.0  
+**Date:** 2026-02-11
 
 ---
 
@@ -470,11 +306,10 @@ After successful testing:
 
 Antes de testar, certifique-se:
 
-- [x] Docker Desktop rodando (ícone verde)
+- [x] Docker Desktop rodando
 - [x] PostgreSQL iniciado (`docker-compose up -d`)
-- [x] Migrations aplicadas (`dotnet ef database update`)
-- [x] Ollama rodando com llama3.1:70b
-- [x] API rodando (`dotnet run`)
+- [x] Ollama rodando com phi4:14b ou llama3.1:8b
+- [x] API rodando (`docker-compose up -d` ou `dotnet run`)
 
 ---
 
@@ -485,17 +320,14 @@ Antes de testar, certifique-se:
 ```bash
 # 1. Health geral
 curl http://localhost:5076/health
-
 # Esperado: {"status":"healthy"}
 
 # 2. Health Ollama
 curl http://localhost:5076/health/ollama
-
 # Esperado: {"status":"healthy","service":"Ollama",...}
 
 # 3. Health Database
 curl http://localhost:5076/health/database
-
 # Esperado: {"status":"healthy","service":"PostgreSQL",...}
 ```
 
@@ -541,9 +373,9 @@ http://localhost:5076/swagger
 
 5. **Click:** "Execute"
 
-6. **Aguardar:** 10-30 segundos (LLM processando)
+6. **Aguardar:** 10-30 segundos (processamento LLM)
 
-7. **Ver Response:**
+7. **Verificar Response:**
 
 **Sucesso (200 OK):**
 ```json
@@ -556,16 +388,22 @@ http://localhost:5076/swagger
   "fileHash": "abc123...",
   "data": {
     "patient": {
-      "name": "João Silva"
+      "name": "João Silva",
+      "cpf": "12345678900",
+      "birthDate": "1985-03-15"
     },
     "exams": [
       {
-        "type": "Hemograma",
-        "value": 150,
-        "unit": "mg/dL",
+        "type": "Hemograma Completo",
+        "value": 5.2,
+        "unit": "milhões/mm³",
         "status": "normal"
       }
     ]
+  },
+  "validation": {
+    "isValid": true,
+    "warningCount": 0
   },
   "stats": {
     "duration": 12500,
@@ -577,116 +415,26 @@ http://localhost:5076/swagger
 
 ---
 
-## 🎯 Teste 4: Buscar Exames por CPF
+## 🎯 Teste 4: Listar Todos os Exames
 
-### Via Swagger:
+### Obter Todos os Exames
+```bash
+curl "http://localhost:5076/api/exams?page=1&pageSize=20"
+```
 
-1. **Expandir:** `GET /api/exams/patient/{cpf}`
+### Filtrar por Nome do Paciente
+```bash
+curl "http://localhost:5076/api/exams?patientName=Silva"
+```
 
-2. **Click:** "Try it out"
-
-3. **Preencher cpf:** `12345678900`
-
-4. **Click:** "Execute"
-
-**Response esperada:**
-
-```json
-{
-  "success": true,
-  "patient": {
-    "name": "João Silva",
-    "cpf": "12345678900"
-  },
-  "exams": [
-    {
-      "id": "...",
-      "type": "Colesterol Total",
-      "collectionDate": "2026-02-03",
-      "results": [
-        {
-          "parameter": "Colesterol Total",
-          "value": 210,
-          "unit": "mg/dL",
-          "status": "alto"
-        }
-      ]
-    }
-  ]
-}
+### Buscar por CPF
+```bash
+curl "http://localhost:5076/api/exams/patient/12345678900"
 ```
 
 ---
 
-## 🎯 Teste 5: Verificar Dados no pgAdmin
-
-### Acessar pgAdmin:
-
-```
-http://localhost:5050
-```
-
-**Login:**
-- Email: `admin@examai.com`
-- Senha: `admin123`
-
-### Conectar ao PostgreSQL:
-
-1. **Click direito em "Servers"** → "Register" → "Server"
-
-2. **Aba General:**
-   - Name: `ExamAI`
-
-3. **Aba Connection:**
-   - Host: `postgres` (dentro do Docker) ou `localhost` (fora)
-   - Port: `5432`
-   - Database: `examai`
-   - Username: `postgres`
-   - Password: `postgres123`
-
-4. **Click "Save"**
-
-### Ver Tabelas:
-
-```
-Servers
-└── ExamAI
-    └── Databases
-        └── examai
-            └── Schemas
-                └── public
-                    └── Tables
-                        ├── patients
-                        ├── documents
-                        ├── exam_types
-                        ├── exams
-                        └── exam_results
-```
-
-### Executar Query:
-
-```sql
--- Ver todos os pacientes
-SELECT * FROM patients;
-
--- Ver todos os documentos
-SELECT * FROM documents;
-
--- Ver exames extraídos
-SELECT 
-    e.id,
-    t.name as exam_type,
-    e.collection_date,
-    COUNT(r.id) as total_results
-FROM exams e
-LEFT JOIN exam_types t ON e.exam_type_id = t.id
-LEFT JOIN exam_results r ON r.exam_id = e.id
-GROUP BY e.id, t.name, e.collection_date;
-```
-
----
-
-## 🎯 Teste 6: Upload Duplicado (Cache)
+## 🎯 Teste 5: Upload Duplicado (Cache)
 
 ### Via Swagger:
 
@@ -698,14 +446,13 @@ GROUP BY e.id, t.name, e.collection_date;
    - Resultado cacheado
 
 **Response esperada:**
-
 ```json
 {
   "success": true,
   "duplicate": true,
   "documentId": "550e8400-...",
   "status": "completed",
-  "message": "Document already processed"
+  "message": "Document already processed. Returning cached result."
 }
 ```
 
@@ -713,7 +460,7 @@ GROUP BY e.id, t.name, e.collection_date;
 
 ---
 
-## 🎯 Teste 7: Deletar Documento
+## 🎯 Teste 6: Deletar Documento
 
 ### Via Swagger:
 
@@ -735,29 +482,6 @@ GROUP BY e.id, t.name, e.collection_date;
 
 ---
 
-## 🎯 Teste 8: Reprocessar Documento Falho
-
-### Via Swagger:
-
-1. **Expandir:** `POST /api/exams/reprocess/{documentId}`
-
-2. **Click:** "Try it out"
-
-3. **Colar documentId falho**
-
-**Response esperada:**
-```json
-{
-  "success": false,
-  "error": "Cannot reprocess: original file not stored.",
-  "suggestion": "Use DELETE then upload again"
-}
-```
-
-**Nota:** Armazenamento de arquivos não implementado. Use DELETE + upload novamente.
-
----
-
 ## 📊 Checklist Completo de Testes
 
 - [ ] ✅ Health checks (geral, ollama, database)
@@ -765,11 +489,12 @@ GROUP BY e.id, t.name, e.collection_date;
 - [ ] ✅ Upload de PDF
 - [ ] ✅ Upload de Word (.docx)
 - [ ] ✅ Upload de Excel (.xlsx)
+- [ ] ✅ Extração de CPF do documento
+- [ ] ✅ Listar todos os exames
+- [ ] ✅ Filtrar por nome do paciente
 - [ ] ✅ Buscar por CPF
 - [ ] ✅ Upload duplicado (cache)
-- [ ] ✅ Verificar dados no pgAdmin
 - [ ] ✅ Deletar documento
-- [ ] ✅ Endpoint de reprocessar
 
 ---
 
@@ -784,18 +509,15 @@ GROUP BY e.id, t.name, e.collection_date;
 # Verificar se API está rodando
 curl http://localhost:5076/health
 
-# Se não, rodar
-cd src/ExamAI.Api
-dotnet run
-
-# Recarregar Swagger (Ctrl+F5)
+# Verificar status Docker
+docker-compose ps
 ```
 
 ---
 
 ### Upload demora muito (> 1 minuto)
 
-**Causa:** Modelo llama3.1:70b é pesado
+**Causa:** Modelo phi4:14b ou llama3.1:70b é pesado
 
 **Normal:**
 - Primeira inferência: 20-30s (carrega modelo)
@@ -816,8 +538,9 @@ dotnet run
    - Word/Excel com dados estruturados
 
 2. **Logs da API:**
-   - Ver output no terminal
-   - Procurar por erros
+   ```bash
+   docker logs examai-api
+   ```
 
 3. **Ollama respondendo:**
    ```bash
@@ -826,52 +549,14 @@ dotnet run
 
 ---
 
-### pgAdmin não conecta
+### CPF não extraído do documento
 
-**Verificar hostname:**
+**Causa:** Documento não contém CPF ou IA não extraiu
 
-- **Dentro do Docker:** Use `postgres`
-- **Fora do Docker:** Use `localhost`
-
-```bash
-# Testar conectividade
-docker exec examai-postgres pg_isready -U postgres
-```
-
----
-
-## 📸 Exemplos de Documentos para Testar
-
-### PDF de Exame
-
-Você pode criar um PDF simples com dados como:
-
-```
-EXAME DE SANGUE
-
-Paciente: João Silva
-CPF: 123.456.789-00
-Data de Nascimento: 15/05/1980
-Data da Coleta: 03/02/2026
-
-Médico Solicitante: Dra. Maria Santos
-Laboratório: LabMed
-
-RESULTADOS:
-
-Hemograma Completo
-- Hemoglobina: 14.5 g/dL (Referência: 13-17)
-- Leucócitos: 7000 /mm³ (Referência: 4000-10000)
-
-Lipidograma
-- Colesterol Total: 210 mg/dL (Referência: < 200)
-- HDL: 45 mg/dL (Referência: > 40)
-- LDL: 130 mg/dL (Referência: < 100)
-- Triglicerídeos: 175 mg/dL (Referência: < 150)
-
-Glicemia
-- Glicemia de Jejum: 95 mg/dL (Referência: 70-100)
-```
+**Solução:**
+- Verificar se documento contém CPF (com ou sem traços)
+- Verificar logs da API para detalhes da extração
+- CPF é opcional - nome do paciente sempre é extraído
 
 ---
 
@@ -879,33 +564,20 @@ Glicemia
 
 Se todos os testes passaram:
 
-✅ **Sistema 100% funcional!**
-✅ **Pronto para uso em produção!**
-✅ **Pode processar exames reais!**
+✅ **Sistema 100% funcional!**  
+✅ **Pronto para uso em produção!**  
+✅ **Pode processar exames reais com extração de CPF!**
 
 ---
 
-## 📚 Próximos Passos
+## 📚 Documentação Relacionada
 
-Após testar com sucesso:
-
-1. ✅ Processar exames médicos reais
-2. ✅ Ajustar prompts se necessário (ExtractionAgent.cs)
-3. ✅ Configurar autenticação (se produção)
-4. ✅ Deploy (Docker Compose facilita!)
+- [README.md](README.md) - Documentação completa
+- [QUICK-START.md](QUICK-START.md) - Guia de início rápido
+- [UPLOAD-TEST.md](UPLOAD-TEST.md) - Guia de testes de upload
 
 ---
 
-## 💡 Dicas de Teste
-
-1. **Comece simples:** Teste com health checks primeiro
-2. **Use Swagger:** É mais fácil que curl
-3. **Veja os logs:** Terminal da API mostra o que está acontecendo
-4. **Teste duplicatas:** Veja o cache funcionando
-5. **Use pgAdmin:** Visualize os dados salvos
-
----
-
-**Desenvolvido por:** Adjair Farias + Clawdex 🔍  
-**Versão:** 1.3.0  
-**Data:** 05/02/2026
+**Desenvolvido por:** Adjair Farias  
+**Versão:** 1.4.0  
+**Data:** 11/02/2026

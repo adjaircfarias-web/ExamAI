@@ -68,7 +68,20 @@ builder.Services.AddScoped<DocumentHashService>();
 // ===================================================
 // Configure HTTP Client Factory
 // ===================================================
-builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("OllamaClient")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+    .ConfigureHttpClient((sp, client) =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(300); // 5 minutos
+    });
+
+// Configurar HttpClient default também
+builder.Services.AddHttpClient("DefaultClient")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+    .ConfigureHttpClient((sp, client) =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(300); // 5 minutos
+    });
 
 // ===================================================
 // Configure CORS
@@ -124,17 +137,20 @@ app.MapGet("/health", () => Results.Ok(new
 .WithTags("Health");
 
 // Health check do Ollama
-app.MapGet("/health/ollama", async (ILogger<Program> logger) =>
+app.MapGet("/health/ollama", async (ILogger<Program> logger, IConfiguration config) =>
 {
     try
     {
-        logger.LogInformation("Testing Ollama connection...");
+        var ollamaUrl = config["Ollama:Url"] ?? "http://localhost:11434";
+        var ollamaModel = config["Ollama:Model"] ?? "llama3.1:70b";
+        
+        logger.LogInformation("Testing Ollama connection at {Url}...", ollamaUrl);
 
         // Testar conexão HTTP direta com Ollama
         using var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-        var response = await httpClient.GetAsync("http://localhost:11434/api/tags");
+        var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags");
         
         if (response.IsSuccessStatusCode)
         {
@@ -143,8 +159,8 @@ app.MapGet("/health/ollama", async (ILogger<Program> logger) =>
             {
                 status = "healthy",
                 service = "Ollama",
-                url = "http://localhost:11434",
-                model = "llama3.1:70b",
+                url = ollamaUrl,
+                model = ollamaModel,
                 timestamp = DateTime.UtcNow
             });
         }
@@ -233,6 +249,7 @@ app.MapPost("/api/process-and-save", async (
     MedicalExamPipeline pipeline,
     ExamRepository repository,
     DocumentHashService hashService,
+    AppDbContext dbContext,
     ILogger<Program> logger) =>
 {
     try
@@ -276,9 +293,6 @@ app.MapPost("/api/process-and-save", async (
                 })
             });
         }
-
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
 
         // 3. Criar documento no banco (sem paciente inicialmente)
         var document = new ExamAI.Domain.Entities.Document
@@ -360,6 +374,119 @@ app.MapPost("/api/process-and-save", async (
 .WithTags("Exams")
 .DisableAntiforgery();
 
+// GET /api/exams - Listar todos os exames
+app.MapGet("/api/exams", async (
+    AppDbContext dbContext,
+    ILogger<Program> logger,
+    int? page = 1,
+    int? pageSize = 20,
+    string? patientName = null) =>
+{
+    try
+    {
+        logger.LogInformation("Listing exams - Page: {Page}, PageSize: {PageSize}, Patient: {Patient}",
+            page, pageSize, patientName);
+
+        // Limitar pageSize maximo a 100
+        var effectivePageSize = Math.Min(pageSize ?? 20, 100);
+
+        // Base query
+        var query = dbContext.Exams
+            .AsNoTracking()
+            .Include(e => e.Document)
+                .ThenInclude(d => d.Patient)
+            .Include(e => e.ExamType)
+            .Include(e => e.Results)
+            .AsQueryable();
+
+        // Aplicar filtro por nome do paciente (parcial)
+        if (!string.IsNullOrWhiteSpace(patientName))
+        {
+            query = query.Where(e => e.Document.Patient != null &&
+                EF.Functions.ILike(e.Document.Patient.Name, $"%{patientName}%"));
+        }
+
+        // Contagem total
+        var total = await query.CountAsync();
+
+        // Ordenar por data de upload e aplicar paginacao
+        var exams = await query
+            .OrderByDescending(e => e.Document.UploadDate)
+            .ThenByDescending(e => e.CreatedAt)
+            .Skip((page.Value - 1) * effectivePageSize)
+            .Take(effectivePageSize)
+            .ToListAsync();
+
+        // Mapear para DTO
+        var examDtos = exams.Select(e => new
+        {
+            examId = e.Id,
+            examType = e.ExamType?.Name ?? "Tipo nao identificado",
+            category = e.ExamType?.Category ?? "Sem categoria",
+            collectionDate = e.CollectionDate,
+            requestingPhysician = e.RequestingPhysician,
+            laboratory = e.Laboratory,
+            uploadDate = e.Document.UploadDate,
+            processingStatus = e.Document.ProcessingStatus,
+            patient = e.Document.Patient == null ? null : new
+            {
+                id = e.Document.Patient.Id,
+                name = e.Document.Patient.Name,
+                cpf = e.Document.Patient.Cpf,
+                birthDate = e.Document.Patient.BirthDate
+            },
+            document = new
+            {
+                id = e.Document.Id,
+                fileName = e.Document.FileName
+            },
+            results = e.Results.Select(r => new
+            {
+                parameter = r.Parameter,
+                value = r.NumericValue?.ToString() ?? r.TextValue,
+                unit = r.Unit,
+                referenceRange = r.ReferenceMin.HasValue && r.ReferenceMax.HasValue
+                    ? $"{r.ReferenceMin}-{r.ReferenceMax}"
+                    : null,
+                status = r.Status
+            }).ToList(),
+            resultsCount = e.Results.Count
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling(total / (double)effectivePageSize);
+
+        return Results.Ok(new
+        {
+            success = true,
+            data = examDtos,
+            pagination = new
+            {
+                page = page.Value,
+                pageSize = effectivePageSize,
+                total,
+                totalPages
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error listing exams");
+        return Results.Json(new
+        {
+            success = false,
+            error = "Erro ao listar exames",
+            details = ex.Message
+        }, statusCode: 500);
+    }
+})
+.WithName("GetAllExams")
+.WithTags("Exams")
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Listar todos os exames",
+    Description = "Retorna lista paginada de exames com dados do paciente e resultados"
+});
+
 // Endpoint para buscar exames por CPF
 app.MapGet("/api/exams/patient/{cpf}", async (
     string cpf,
@@ -429,64 +556,6 @@ app.MapGet("/api/exams/patient/{cpf}", async (
     }
 })
 .WithName("GetExamsByPatient")
-.WithTags("Exams");
-
-// Reprocessar Documento Falhado
-app.MapPost("/api/exams/reprocess/{documentId}", async (
-    Guid documentId,
-    MedicalExamPipeline pipeline,
-    ExamRepository repository,
-    ILogger<Program> logger) =>
-{
-    try
-    {
-        logger.LogInformation("Reprocessing document: {DocumentId}", documentId);
-
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ExamAI.Infrastructure.Data.AppDbContext>();
-
-        // Buscar documento
-        var document = await dbContext.Documents
-            .Include(d => d.Patient)
-            .FirstOrDefaultAsync(d => d.Id == documentId);
-
-        if (document == null)
-        {
-            return Results.NotFound(new { success = false, error = "Document not found" });
-        }
-
-        logger.LogInformation("Found document: {FileName}, Current status: {Status}", 
-            document.FileName, document.ProcessingStatus);
-
-        // Atualizar status para processing
-        document.ProcessingStatus = "processing";
-        document.ProcessingError = null;
-        await dbContext.SaveChangesAsync();
-
-        // Nota: Como não temos o arquivo original em disco, 
-        // não podemos reprocessar completamente
-        // Esta é uma limitação - precisaria armazenar o arquivo em disco ou blob storage
-
-        return Results.Ok(new
-        {
-            success = false,
-            error = "Cannot reprocess: original file not stored. Please re-upload the document.",
-            documentId = document.Id,
-            fileName = document.FileName,
-            suggestion = "Use DELETE /api/exams/{documentId} to remove failed document, then upload again"
-        });
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error reprocessing document: {DocumentId}", documentId);
-        return Results.Json(new
-        {
-            success = false,
-            error = ex.Message
-        }, statusCode: 500);
-    }
-})
-.WithName("ReprocessDocument")
 .WithTags("Exams");
 
 // Deletar Documento

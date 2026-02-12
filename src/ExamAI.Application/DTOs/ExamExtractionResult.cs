@@ -15,6 +15,7 @@ public class ExamExtractionResult
 public class PatientInfo
 {
     public string? Name { get; set; }
+    public string? Cpf { get; set; }
     public string? BirthDate { get; set; }
     public string? CollectionDate { get; set; }
     public string? RequestingPhysician { get; set; }
